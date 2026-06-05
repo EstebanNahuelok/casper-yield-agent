@@ -1,0 +1,30 @@
+# Secrets
+.env
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+# Rust / Odra
+target/
+
+# Node / Frontend
+node_modules/
+.next/
+out/
+
+# OS
+.DS_Store
+Thumbs.db
