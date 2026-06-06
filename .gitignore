@@ -1,0 +1,41 @@
+# IDEs y Editores
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Compilación de Rust / WebAssembly
+/target/
+Cargo.lock
+/wasm/
+
+# Archivos de Configuración y Claves (¡Seguridad!)
+.env
+.env.*
+/keys/secret_key.pem
+*.pem
+*.key
+
+# Directorios de compilación del backend / builders
+.backend*
+.builder*
+
+# --- EXCLUSIONES DE CLAUDE Y DOCUMENTOS DE AGENTES ---
+# Ignorar configuraciones e instrucciones de Claude
+.claude
+CLAUDE.md
+
+# Ignorar notas, reportes y documentación interna de los agentes
+*.txt
+*.md
+!README.md
+/docs/
+/notes/
+/agents_data/
+
+# Ignorar archivos temporales o de prompts de IA
+*prompt*
+*context*
