@@ -87,3 +87,12 @@ src/
 ```bash
 cargo test
 ```
+
+## YieldVault — Casper Testnet Deployment
+
+**Contract Hash:** hash-6c5fe09ddc4ca76adfa2790bf7a58767eba32020a50e606a14a8ef803a89a06a  
+**Contract Package Hash:** hash-a44b0f0f83462cdc10172a0576ec760363fc1f25ca6dd92da9df1e2200a78c88  
+**Deploy Hash:** 87d049e49874173ce5ee3eb6e7333baeebd6e3be938e65aa6cae82bb7ba31ecb  
+**Owner Wallet:** 01c3acc1af3faa221073e5928bf74d58ad9ad9e58be2bdc39218a25e5ddff72309  
+**Block:** 8,087,104  
+**Status:** Live — pending `init` call and agent integration
