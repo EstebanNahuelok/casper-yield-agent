@@ -116,14 +116,20 @@ class CasperMCPClient:
             {"contractPackageHash": settings.scspr_contract_hash, "count": limit},
         )
 
-    async def call_contract(self, contract_hash: str, entry_point: str, args: dict) -> dict:
+    async def call_contract(
+        self,
+        contract_hash: str,
+        entry_point: str,
+        args: dict,
+        secret_key: str | None = None,
+    ) -> dict:
         return await self._call(
             "CallContract",
             {
                 "contractHash": contract_hash,
                 "entryPoint": entry_point,
                 "args": args,
-                "secretKey": settings.vault_secret_key,
+                "secretKey": secret_key or settings.vault_owner_secret_key,
                 "network": settings.casper_network,
             },
         )

@@ -13,12 +13,13 @@ class Settings(BaseSettings):
     cspr_cloud_api_key: str
     csprtrade_mcp_url: str = "https://mcp.cspr.trade/mcp"
 
-    # Wallet
+    # Wallet (owner y agente comparten la misma keypair)
     vault_public_key: str
-    vault_secret_key: str
+    vault_owner_public_key: str = "01c3acc1af3faa221073e5928bf74d58ad9ad9e58be2bdc39218a25e5ddff72309"
+    vault_owner_secret_key: str
 
     # Contratos
-    vault_contract_hash: str
+    vault_contract_hash: str = "hash-6c5fe09ddc4ca76adfa2790bf7a58767eba32020a50e606a14a8ef803a89a06a"
     scspr_contract_hash: str
 
     # Red

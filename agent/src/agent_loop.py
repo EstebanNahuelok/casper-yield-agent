@@ -162,6 +162,12 @@ async def agent_loop() -> None:
     await _connect_with_retry(casper)
 
     executor = ChainExecutor(casper)
+
+    # Registra el agente en el contrato (firmado como owner). Idempotente: si ya
+    # fue inicializado el contrato loguea un warning y continúa.
+    await state_store.update_status("initializing_contract")
+    await executor.initialize_contract()
+
     await state_store.update_status("running")
     log.info("agent.loop_started")
 
