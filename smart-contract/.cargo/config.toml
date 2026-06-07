@@ -1,2 +1,7 @@
 [target.wasm32-unknown-unknown]
 rustflags = ["-C", "target-feature=-bulk-memory,-mutable-globals"]
+
+# OpenSSL 3.x on Debian/Ubuntu: pkg-config only returns -lssl, missing -lcrypto.
+# BIO_set_flags and other symbols live in libcrypto, so we add it explicitly.
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-lcrypto"]

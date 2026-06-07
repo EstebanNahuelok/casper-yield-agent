@@ -1,4 +1,4 @@
-use odra::host::HostEnv;
+use odra::host::{HostEnv, HostRef};
 use odra::prelude::Address;
 use odra::schema::casper_contract_schema::NamedCLType;
 use odra::casper_types::U512;
@@ -36,6 +36,50 @@ impl DeployScript for VaultDeployScript {
     }
 }
 
+// ── deposit / withdraw scenarios ──────────────────────────────────────────────
+
+pub struct DepositScenario;
+
+impl Scenario for DepositScenario {
+    fn args(&self) -> Vec<CommandArg> {
+        vec![CommandArg::new(
+            "amount_motes",
+            "Amount to deposit in motes (1 CSPR = 1_000_000_000 motes)",
+            NamedCLType::String,
+        )
+        .required()]
+    }
+
+    fn run(
+        &self,
+        env: &HostEnv,
+        container: &DeployedContractsContainer,
+        args: Args,
+    ) -> core::result::Result<(), ScenarioError> {
+        let amount_str: String = args.get_single("amount_motes")?;
+        let amount = U512::from_dec_str(&amount_str).map_err(|_| {
+            ScenarioError::MissingScenarioArg(format!("Invalid amount_motes: {amount_str}"))
+        })?;
+
+        // Proxy wasm + contract call on Casper testnet needs ~25 CSPR gas
+        env.set_gas(25_000_000_000);
+        let mut vault = container.contract_ref::<YieldVault>(env)?;
+        odra_cli::log(format!(
+            "Depositing {} motes ({:.4} CSPR)...",
+            amount,
+            amount.as_u64() as f64 / 1_000_000_000.0
+        ));
+        vault.with_tokens(amount).deposit();
+        odra_cli::log("Deposit successful.".to_string());
+        Ok(())
+    }
+}
+
+impl ScenarioMetadata for DepositScenario {
+    const NAME: &'static str = "deposit";
+    const DESCRIPTION: &'static str = "Deposit CSPR into the vault (payable)";
+}
+
 // ── read-only scenarios ────────────────────────────────────────────────────────
 
 pub struct GetStatusScenario;
@@ -50,8 +94,8 @@ impl Scenario for GetStatusScenario {
         _args: Args,
     ) -> core::result::Result<(), ScenarioError> {
         let vault = container.contract_ref::<YieldVault>(env)?;
-        odra_cli::log(format!("owner:        {}", vault.get_owner()));
-        odra_cli::log(format!("agent:        {}", vault.get_agent()));
+        odra_cli::log(format!("owner:        {:?}", vault.get_owner()));
+        odra_cli::log(format!("agent:        {:?}", vault.get_agent()));
         odra_cli::log(format!("paused:       {}", vault.is_paused()));
         odra_cli::log(format!("total_locked: {} motes", vault.get_total_locked()));
         odra_cli::log(format!("action_count: {}", vault.get_action_count()));
@@ -210,6 +254,8 @@ pub fn main() {
     OdraCli::new()
         .about("CLI for YieldVault — Casper Agentic Buildathon 2026")
         .deploy(VaultDeployScript)
+        .contract::<YieldVault>()
+        .scenario(DepositScenario)
         .scenario(GetStatusScenario)
         .scenario(GetBalanceScenario)
         .scenario(LogActionScenario)
