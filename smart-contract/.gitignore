@@ -15,9 +15,15 @@ Cargo.lock
 # Archivos de Configuración y Claves (¡Seguridad!)
 .env
 .env.*
-/keys/secret_key.pem
+*.livenet.env
+/keys/
 *.pem
 *.key
+*.secret
+*.priv
+
+# Contratos deployados (pasar por canal privado al equipo)
+/resources/
 
 # Directorios de compilación del backend / builders
 .backend*
