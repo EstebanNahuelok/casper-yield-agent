@@ -1,77 +1,98 @@
-# Casper Yield Agent
+# YieldVault
 
-Autonomous yield farming agent on Casper Network Testnet — Casper Agentic Buildathon 2026.
+Smart contract for the **Casper Agentic Buildathon 2026** — a yield farming vault controlled by an autonomous AI agent on Casper Network.
 
-## Architecture
+## Overview
 
-```
-casper-yield-agent/
-├── agent/                  # Python agent (Persona 2)
-│   ├── main.py             # Entry point: agent loop + API server
-│   ├── src/
-│   │   ├── config.py       # Settings via pydantic-settings + .env
-│   │   ├── agent_loop.py   # Core loop: observe → decide → execute → log
-│   │   ├── mcp_clients/
-│   │   │   ├── casper_client.py   # Casper MCP Server (balance, rates, contract calls)
-│   │   │   └── trade_client.py    # CSPR.trade MCP (swap quotes, pool APY)
-│   │   ├── llm/
-│   │   │   └── gemini.py          # Google Gemini decision engine
-│   │   ├── chain/
-│   │   │   └── executor.py        # On-chain execution via YieldVault contract
-│   │   ├── api/
-│   │   │   └── server.py          # FastAPI: GET /status for the frontend
-│   │   └── state/
-│   │       ├── models.py          # Pydantic models (Decision, MarketData, AgentState)
-│   │       └── store.py           # In-memory async state store
-│   ├── tests/
-│   ├── requirements.txt
-│   └── .env.example
-├── contracts/              # Odra/Rust YieldVault contract (Persona 1)
-└── frontend/               # React dashboard (Persona 3)
-```
+YieldVault is an on-chain vault where users deposit CSPR and an authorized AI agent manages yield strategies. All agent decisions are recorded on-chain as immutable, verifiable evidence.
 
-## Agent loop (every 5 minutes)
+### Roles
 
-1. **Observe** — fetch balance via Casper MCP, pool APY via CSPR.trade MCP
-2. **Decide** — send market data to Gemini 1.5 Pro; receive SWAP or HOLD + reasoning
-3. **Execute** — if SWAP: call `execute_swap` on YieldVault contract
-4. **Log** — always call `log_action` on YieldVault (auditable on-chain)
-5. **Expose** — FastAPI `/status` endpoint updated for the React dashboard
+| Role | Description |
+|------|-------------|
+| **Owner** | Deploys and administers the vault. Can pause, unpause, transfer ownership, and rotate the agent. |
+| **Agent** | Autonomous AI that logs decisions and executes swaps on behalf of the vault. Cannot withdraw user funds. |
+| **Users** | Deposit and withdraw their own CSPR independently. Balances are tracked per address. |
 
-Swap rules enforced in the LLM prompt:
-- Pool APY > current APY + 2% → SWAP
-- Slippage > 1.5% → HOLD
-- Balance < 100 CSPR → HOLD
+### Features
 
-## Setup
+- Per-user CSPR balance tracking (`Mapping<Address, U512>`)
+- Immutable on-chain action log with full history (`Mapping<u64, ActionEntry>`)
+- On-chain swap record with full history (`Mapping<u64, SwapRecord>`)
+- Vault pause/unpause with idempotency
+- Ownership transfer with event emission
+- Agent rotation
+- Checked arithmetic throughout — no silent overflow
+- 8 on-chain events covering all state transitions
+
+## Stack
+
+- **Casper Network** (Testnet)
+- **Rust**
+- **Odra Framework** `=2.7.2` (pinned)
+- **cargo-odra**
+
+## Build
+
+Install [cargo-odra](https://github.com/odradev/cargo-odra) first.
 
 ```bash
-cd agent
-cp .env.example .env
-# fill in .env with your keys
+# Run tests (in-process, no WASM required)
+cargo odra test
 
-pip install -r requirements.txt
-python main.py
+# Build WASM for Casper
+cargo odra build -b casper
+
+# Run tests against the Casper WASM backend
+cargo odra test -b casper
 ```
 
-The agent exposes:
-- `GET http://localhost:8000/status` — current agent state (for the frontend)
-- `GET http://localhost:8000/health`
+## Deploy
 
-## Prerequisites
+Set the agent address before deploying:
 
 ```bash
-# Casper MCP Server (local)
-dotnet tool install -g CasperMcp
-casper-mcp --api-key YOUR_KEY --network testnet --transport sse --port 3001
+export ODRA_AGENT_ADDRESS="account-hash-<hex>"
+cargo odra run -b casper --bin yield_vault_cli -- deploy
 ```
 
-Get your CSPR.cloud API key at https://cspr.cloud (free for testnet).
-
-## Running tests
+## CLI Scenarios
 
 ```bash
-cd agent
-pip install pytest pytest-asyncio
-pytest
+# Query a user's balance (in motes and CSPR)
+cargo odra run -b casper --bin yield_vault_cli -- scenario get-balance --user account-hash-<hex>
 ```
+
+## Source Layout
+
+```
+src/
+  vault.rs      — YieldVault contract (entry points, business logic)
+  errors.rs     — VaultError enum
+  events.rs     — All on-chain events
+  types.rs      — ActionEntry, SwapRecord structs
+  tests/
+    test_deposit.rs
+    test_withdraw.rs
+    test_logging.rs
+    test_access.rs
+    test_accounting.rs
+    test_integration.rs
+```
+
+## Tests
+
+50 tests covering deposits, withdrawals, access control, action logging, swap execution, accounting invariants, integration flows, and event verification.
+
+```bash
+cargo test
+```
+
+## YieldVault — Casper Testnet Deployment
+
+**Contract Hash:** hash-6c5fe09ddc4ca76adfa2790bf7a58767eba32020a50e606a14a8ef803a89a06a  
+**Contract Package Hash:** hash-a44b0f0f83462cdc10172a0576ec760363fc1f25ca6dd92da9df1e2200a78c88  
+**Deploy Hash:** 87d049e49874173ce5ee3eb6e7333baeebd6e3be938e65aa6cae82bb7ba31ecb  
+**Owner Wallet:** 01c3acc1af3faa221073e5928bf74d58ad9ad9e58be2bdc39218a25e5ddff72309  
+**Block:** 8,087,104  
+**Status:** Live — pending `init` call and agent integration
