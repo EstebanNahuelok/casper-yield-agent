@@ -23,10 +23,8 @@ impl EventMatcher {
         event_json: &str,
         expected_hash: &str
     ) -> Result<bool, LivenetError> {
-        let event: JsonValue = match serde_json::from_str(event_json.trim()) {
-            Ok(v) => v,
-            Err(_) => return Ok(false), // skip malformed/unknown event types
-        };
+        let event: JsonValue = serde_json::from_str(event_json.trim())
+            .map_err(|e| ClientError(format!("Failed to parse event JSON: {}", e)))?;
 
         let transaction_hash = Self::extract_transaction_hash(&event)?;
 

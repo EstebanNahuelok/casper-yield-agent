@@ -1,15 +1,7 @@
 # Secrets
 .env
-.env.*
 *.key
 *.pem
-*.secret
-*.priv
-keys/
-secrets/
-
-# Agent tooling
-.atl/
 
 # Python
 __pycache__/
