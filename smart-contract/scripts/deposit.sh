@@ -25,6 +25,40 @@ if [ -f "$LIVENET_ENV" ]; then
   set +o allexport
 fi
 
+# ── locate Python (Windows-compatible) ───────────────────────────────────────
+# On Windows/Git Bash, 'python3' and 'python' may redirect to the Microsoft
+# Store stub (exit 9009). Try candidates in order: env override, venv,
+# py launcher, then bare names.
+_find_python() {
+  local candidates=(
+    "${PYTHON_CMD:-}"
+    "${VIRTUAL_ENV:-}/Scripts/python"
+    "${VIRTUAL_ENV:-}/bin/python3"
+    "$(command -v py 2>/dev/null || true)"
+    "$(command -v python3 2>/dev/null || true)"
+    "$(command -v python 2>/dev/null || true)"
+  )
+  for cmd in "${candidates[@]}"; do
+    [ -z "$cmd" ] && continue
+    # Invoke with -c to filter out the MS Store stub (exits 9009 / non-zero without output)
+    if "$cmd" -c "import sys; sys.exit(0)" 2>/dev/null; then
+      echo "$cmd"
+      return 0
+    fi
+  done
+  return 1
+}
+
+PYTHON=$(_find_python || true)
+if [ -z "$PYTHON" ]; then
+  echo "ERROR: Python no encontrado."
+  echo "  Opciones:"
+  echo "    1. Activá tu venv antes de correr el script: source venv/Scripts/activate"
+  echo "    2. O definí PYTHON_CMD=/ruta/a/python.exe en .livenet.env"
+  exit 1
+fi
+echo "[deposit] Usando Python: $PYTHON"
+
 # ── validate required vars ────────────────────────────────────────────────────
 if [ -z "${CSPR_CLOUD_AUTH_TOKEN:-}" ]; then
   echo "ERROR: CSPR_CLOUD_AUTH_TOKEN is not set."
@@ -43,9 +77,9 @@ if [ ! -f "$ODRA_CASPER_LIVENET_SECRET_KEY_PATH" ]; then
   exit 1
 fi
 
-# ── parse amount ──────────────────────────────────────────────────────────────
+# ── parse amount (bash arithmetic, no Python needed) ─────────────────────────
 CSPR_AMOUNT="${1:-200}"
-AMOUNT_MOTES=$(python3 -c "print(int(${CSPR_AMOUNT}) * 1_000_000_000)")
+AMOUNT_MOTES=$(( CSPR_AMOUNT * 1000000000 ))
 echo "[deposit] Amount: ${CSPR_AMOUNT} CSPR = ${AMOUNT_MOTES} motes"
 
 # ── Odra livenet config ───────────────────────────────────────────────────────
@@ -55,7 +89,7 @@ export ODRA_CASPER_LIVENET_CHAIN_NAME="${ODRA_CASPER_LIVENET_CHAIN_NAME:-casper-
 
 # ── start proxy ───────────────────────────────────────────────────────────────
 echo "[deposit] Starting auth proxy..."
-python3 scripts/cspr_proxy.py &
+"$PYTHON" scripts/cspr_proxy.py &
 PROXY_PID=$!
 trap 'kill $PROXY_PID 2>/dev/null || true' EXIT
 
