@@ -18,20 +18,6 @@ MCP_RETRY_INTERVAL = 30  # segundos entre intentos de reconexión al Casper MCP 
 
 
 # ---------------------------------------------------------------------------
-# Helpers de parseo de la respuesta del Casper MCP
-# ---------------------------------------------------------------------------
-
-def _parse_balance(raw) -> float:
-    """Balance en motes → CSPR. Tolera dict con 'balance', int, o float."""
-    if isinstance(raw, (int, float)):
-        return float(raw) / 1_000_000_000
-    if isinstance(raw, dict):
-        motes = raw.get("balance") or raw.get("data", {}).get("balance", 0)
-        return float(motes) / 1_000_000_000
-    return 0.0
-
-
-# ---------------------------------------------------------------------------
 # Conexión con reintento (solo para el Casper MCP local)
 # ---------------------------------------------------------------------------
 
@@ -73,12 +59,11 @@ async def _collect_market_data(
     """
     Recolecta todos los datos necesarios para la decisión del ciclo.
 
-    - balance: Casper MCP local (en motes → CSPR)
+    - balance: total_locked del contrato vault via Casper RPC (named key → URef → U512)
     - apy: estimado desde la ratio de reserves del par WCSPR/sCSPR en api.cspr.trade
     - slippage: calculado con la fórmula AMM (x*y=k, 0.3% fee) para el 50% del balance
     """
-    balance_raw = await casper.get_account_balance()
-    balance = _parse_balance(balance_raw)
+    balance = await casper.get_vault_total_locked()
 
     # APY de sCSPR anualizado desde la ratio de reserves (stateless REST)
     pool_apy = await trade.estimate_scspr_apy()

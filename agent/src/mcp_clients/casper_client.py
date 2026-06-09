@@ -1,6 +1,7 @@
 import asyncio
 from contextlib import AsyncExitStack
 
+import httpx
 import structlog
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
@@ -133,3 +134,67 @@ class CasperMCPClient:
                 "network": settings.casper_network,
             },
         )
+
+    async def get_vault_total_locked(self) -> float:
+        """
+        Returns the CSPR balance of the vault's __contract_main_purse via Casper RPC.
+
+        Casper 2.x path:
+          1. state_get_item(contract_hash) → named_keys → __contract_main_purse URef
+          2. query_balance(purse_uref) → motes (U512 string)
+
+        Returns CSPR float (motes / 1e9). Returns 0.0 on any RPC error.
+        """
+        rpc_url = f"https://node.{settings.casper_network}.cspr.cloud/rpc"
+        auth_headers = {
+            "Authorization": settings.cspr_cloud_api_key,
+            "Content-Type": "application/json",
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as http:
+                # 1. State root hash
+                r = await http.post(rpc_url, headers=auth_headers, json={
+                    "jsonrpc": "2.0", "method": "chain_get_state_root_hash",
+                    "params": {}, "id": 1,
+                })
+                r.raise_for_status()
+                state_root = r.json()["result"]["state_root_hash"]
+
+                # 2. Contract entity → __contract_main_purse URef
+                r = await http.post(rpc_url, headers=auth_headers, json={
+                    "jsonrpc": "2.0", "method": "state_get_item",
+                    "params": {
+                        "state_root_hash": state_root,
+                        "key": settings.vault_contract_hash,
+                        "path": [],
+                    }, "id": 2,
+                })
+                r.raise_for_status()
+                named_keys_raw = (
+                    r.json()
+                    .get("result", {})
+                    .get("stored_value", {})
+                    .get("Contract", {})
+                    .get("named_keys", [])
+                )
+                named_keys = {nk["name"]: nk["key"] for nk in named_keys_raw}
+                purse_uref = named_keys.get("__contract_main_purse")
+                if not purse_uref:
+                    log.warning("vault_rpc.no_main_purse", keys=list(named_keys.keys()))
+                    return 0.0
+
+                # 3. Purse balance via Casper 2.x query_balance
+                r = await http.post(rpc_url, headers=auth_headers, json={
+                    "jsonrpc": "2.0", "method": "query_balance",
+                    "params": {"purse_identifier": {"purse_uref": purse_uref}},
+                    "id": 3,
+                })
+                r.raise_for_status()
+                motes = int(r.json()["result"]["balance"])
+                log.info("vault_rpc.balance", motes=motes, cspr=motes / 1_000_000_000)
+                return motes / 1_000_000_000
+
+        except Exception as exc:
+            log.warning("vault_rpc.failed", error=str(exc), exc_info=True)
+            return 0.0
