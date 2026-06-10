@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime
 
-from .models import AgentState, Decision, MarketData
+from .models import AgentState, Decision, DecisionHistoryEntry, MarketData
 
 
 class StateStore:
@@ -30,6 +30,17 @@ class StateStore:
             if tx_hash:
                 self._state.last_tx_hash = tx_hash
                 self._state.actions_taken += 1
+
+            entry = DecisionHistoryEntry(
+                timestamp=datetime.utcnow(),
+                action=decision.action,
+                reasoning=decision.reasoning,
+                deploy_hash=tx_hash,
+            )
+            self._state.decision_history.append(entry)
+            # Mantener solo las últimas 10 decisiones (FIFO)
+            self._state.decision_history = self._state.decision_history[-10:]
+
             self._state.last_updated = datetime.utcnow()
 
     async def record_error(self, error: str) -> None:

@@ -18,6 +18,13 @@ class Decision(BaseModel):
     token_out: Optional[str] = None
 
 
+class DecisionHistoryEntry(BaseModel):
+    timestamp: datetime
+    action: Action
+    reasoning: str
+    deploy_hash: Optional[str] = None
+
+
 class MarketData(BaseModel):
     balance_cspr: float
     current_apy: float
@@ -31,6 +38,7 @@ class AgentState(BaseModel):
     status: str = "idle"
     last_decision: Optional[Decision] = None
     last_market_data: Optional[MarketData] = None
+    decision_history: list[DecisionHistoryEntry] = []
     balance_cspr: float = 0.0
     actions_taken: int = 0
     last_tx_hash: Optional[str] = None
