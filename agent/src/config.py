@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     min_apy_delta: float = 2.0
     max_slippage_pct: float = 1.5
     min_balance_cspr: float = 100.0
+    swarm_vote_threshold: int = 2
 
     # API
     api_host: str = "0.0.0.0"

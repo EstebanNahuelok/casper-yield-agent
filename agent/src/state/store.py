@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime
 
-from .models import AgentState, Decision, DecisionHistoryEntry, MarketData
+from .models import AgentState, AgentVote, Decision, DecisionHistoryEntry, MarketData, SwarmResult
 
 
 class StateStore:
@@ -24,7 +24,12 @@ class StateStore:
             self._state.balance_cspr = data.balance_cspr
             self._state.last_updated = datetime.utcnow()
 
-    async def record_decision(self, decision: Decision, tx_hash: str | None = None) -> None:
+    async def record_decision(
+        self,
+        decision: Decision,
+        tx_hash: str | None = None,
+        swarm_votes: list[AgentVote] | None = None,
+    ) -> None:
         async with self._lock:
             self._state.last_decision = decision
             if tx_hash:
@@ -36,10 +41,21 @@ class StateStore:
                 action=decision.action,
                 reasoning=decision.reasoning,
                 deploy_hash=tx_hash,
+                swarm_votes=swarm_votes,
             )
             self._state.decision_history.append(entry)
             # Mantener solo las últimas 10 decisiones (FIFO)
             self._state.decision_history = self._state.decision_history[-10:]
+
+            if swarm_votes is not None:
+                tally: dict[str, int] = {"SWAP": 0, "HOLD": 0}
+                for v in swarm_votes:
+                    tally[v.action.value] = tally.get(v.action.value, 0) + 1
+                self._state.last_swarm_result = SwarmResult(
+                    votes=swarm_votes,
+                    final_action=decision.action,
+                    vote_tally=tally,
+                )
 
             self._state.last_updated = datetime.utcnow()
 

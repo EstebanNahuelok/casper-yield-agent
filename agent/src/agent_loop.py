@@ -6,7 +6,7 @@ import structlog
 
 from .chain.executor import ChainExecutor
 from .config import settings
-from .llm.groq import GroqDecisionEngine
+from .llm.swarm import SwarmDecisionEngine
 from .mcp_clients.casper_client import CasperMCPClient, MCPConnectionError
 from .mcp_clients.trade_client import CSPRTradeRestClient, TradeClientError
 from .state.models import Action, MarketData
@@ -111,10 +111,10 @@ async def _run_cycle(
         slippage=market.estimated_slippage,
     )
 
-    # 2. Decidir con Gemini
+    # 2. Decidir con el enjambre
     await state_store.update_status("deciding")
     market_summary = json.dumps(market.model_dump(), default=str, ensure_ascii=False)
-    decision = await llm.decide(market_summary)
+    decision, votes = await llm.decide_with_votes(market_summary)
     log.info("agent.decision", action=decision.action, reasoning=decision.reasoning)
 
     # 3. Ejecutar si corresponde
@@ -128,7 +128,7 @@ async def _run_cycle(
     await executor.log_action(decision, deploy_hash)
 
     # 5. Actualizar estado para el frontend
-    await state_store.record_decision(decision, deploy_hash)
+    await state_store.record_decision(decision, deploy_hash, swarm_votes=votes)
 
 
 # ---------------------------------------------------------------------------
@@ -138,7 +138,7 @@ async def _run_cycle(
 async def agent_loop() -> None:
     casper = CasperMCPClient()
     trade = CSPRTradeRestClient()   # stateless REST, no necesita connect()
-    llm = GroqDecisionEngine()
+    llm = SwarmDecisionEngine()
 
     log.info("agent.starting", check_interval=settings.check_interval_seconds)
     await state_store.update_status("connecting")

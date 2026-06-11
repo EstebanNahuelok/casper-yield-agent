@@ -18,11 +18,24 @@ class Decision(BaseModel):
     token_out: Optional[str] = None
 
 
+class AgentVote(BaseModel):
+    agent_name: str
+    action: Action
+    reasoning: str
+
+
+class SwarmResult(BaseModel):
+    votes: list["AgentVote"]
+    final_action: Action
+    vote_tally: dict[str, int]
+
+
 class DecisionHistoryEntry(BaseModel):
     timestamp: datetime
     action: Action
     reasoning: str
     deploy_hash: Optional[str] = None
+    swarm_votes: Optional[list["AgentVote"]] = None
 
 
 class MarketData(BaseModel):
@@ -44,3 +57,4 @@ class AgentState(BaseModel):
     last_tx_hash: Optional[str] = None
     last_updated: datetime = datetime.utcnow()
     errors: list[str] = []
+    last_swarm_result: Optional[SwarmResult] = None
