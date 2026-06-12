@@ -123,19 +123,19 @@ export const StrategyPage=() =>{
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans pb-16">
-      <nav className="border-b border-zinc-900 bg-zinc-950/50 backdrop-blur-sm sticky top-0 z-30">
+      <nav className="border-b border-red-500/20 bg-zinc-950/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="mx-auto max-w-7xl px-6 h-14 flex items-center justify-between">
-          <Link to="/dashboard" className="flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors text-sm">
+          <Link to="/dashboard" className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors text-sm">
             <ArrowLeft className="size-4" />
             <span>{t.back}</span>
           </Link>
-          <div className="inline-flex items-center rounded-lg border border-zinc-800 bg-zinc-900/40 p-0.5">
+          <div className="inline-flex items-center rounded-lg border border-red-500/30 bg-zinc-900/40 p-0.5">
             {(["en", "es"] as const).map((l) => (
               <button
                 key={l}
                 onClick={() => setLang(l)}
                 className={`px-2 py-1 text-[10px] font-mono uppercase tracking-wider rounded-md transition-colors ${
-                  lang === l ? "bg-zinc-800 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
+                  lang === l ? "bg-red-500 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"
                 }`}
               >
                 {l}
@@ -166,12 +166,12 @@ export const StrategyPage=() =>{
                 onClick={() => applyProfile(id)}
                 className={`text-left p-4 rounded-xl border transition-colors ${
                   profile === id
-                    ? "border-brand/60 bg-brand/5"
+                    ? "border-red-500/60 bg-red-500/5"
                     : "border-zinc-900 bg-zinc-900/30 hover:border-zinc-800"
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <Icon className={`size-4 ${profile === id ? "text-brand" : "text-zinc-500"}`} />
+                  <Icon className={`size-4 ${profile === id ? "text-red-400" : "text-zinc-500"}`} />
                   <span className={`text-sm font-medium ${profile === id ? "text-zinc-100" : "text-zinc-300"}`}>
                     {label}
                   </span>
@@ -246,7 +246,7 @@ export const StrategyPage=() =>{
             <div className="flex items-center gap-3 pt-4">
               <button
                 onClick={save}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand text-zinc-950 text-sm font-semibold hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-zinc-950 text-sm font-semibold hover:opacity-90 transition-opacity"
               >
                 {saved ? <Check className="size-4" /> : null}
                 {saved ? t.saved : t.save}
@@ -261,10 +261,10 @@ export const StrategyPage=() =>{
           </section>
 
           <aside className="lg:col-span-5">
-            <div className="rounded-xl border border-brand/20 bg-brand/5 p-6 sticky top-24">
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 sticky top-24">
               <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="size-4 text-brand" />
-                <h3 className="text-xs uppercase tracking-widest text-brand">{t.summary}</h3>
+                <TrendingUp className="size-4 text-red-400" />
+                <h3 className="text-xs uppercase tracking-widest text-red-400">{t.summary}</h3>
               </div>
               <p className="text-[11px] text-zinc-500 mb-5">{t.summaryDesc}</p>
 
@@ -285,7 +285,7 @@ export const StrategyPage=() =>{
                 </p>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-brand/10 grid grid-cols-2 gap-4 text-xs font-mono">
+              <div className="mt-6 pt-6 border-t border-red-500/10 grid grid-cols-2 gap-4 text-xs font-mono">
                 <Stat label="APY ≥" value={apy + "%"} />
                 <Stat label="Slip ≤" value={slip + "%"} />
                 <Stat label="Alloc ≤" value={alloc + "%"} />
@@ -325,7 +325,7 @@ function ParamSlider({
     <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-900/30">
       <div className="flex items-baseline justify-between mb-1">
         <label className="text-sm text-zinc-200">{label}</label>
-        <span className="text-sm font-mono text-brand tabular-nums">
+        <span className="text-sm font-mono text-red-400 tabular-nums">
           {display}
           {unit}
         </span>
@@ -338,7 +338,7 @@ function ParamSlider({
         step={step}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-full accent-brand"
+        className="w-full accent-red-500"
       />
     </div>
   );
@@ -366,7 +366,7 @@ function Toggle({
         aria-checked={value}
         onClick={() => onChange(!value)}
         className={`shrink-0 mt-1 relative w-10 h-5 rounded-full transition-colors ${
-          value ? "bg-brand" : "bg-zinc-800"
+          value ? "bg-red-500" : "bg-zinc-800"
         }`}
       >
         <span

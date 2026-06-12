@@ -99,9 +99,24 @@ export const AuditPage = () => {
             </div>
             <span className="font-medium text-zinc-100 tracking-tight neon-text-red">CASPER AUTOPILOT</span>
           </div>
-          <Link to="/dashboard" className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors">
-            <ArrowLeft className="size-4" /> BACK
-          </Link>
+          <div className="flex items-center gap-4">
+            <div className="inline-flex items-center rounded-lg border border-red-500/30 bg-zinc-900/40 p-0.5">
+              {(["en", "es"] as const).map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`px-2 py-1 text-[10px] font-mono uppercase tracking-wider rounded-md transition-colors ${
+                    lang === l ? "bg-red-500 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+            <Link to="/dashboard" className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors">
+              <ArrowLeft className="size-4" /> {t.back.toUpperCase()}
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -112,18 +127,18 @@ export const AuditPage = () => {
             <span className="uppercase tracking-[3px] text-xs font-mono text-red-400 neon-text">LIVE AUDIT TRAIL</span>
           </div>
           <h1 className="text-5xl font-bold tracking-tighter neon-text-red">
-            AUDIT LOGS
+            {t.title.toUpperCase()}
           </h1>
-          <p className="text-zinc-400 mt-2">Inmutable record of agent decisions on Casper Testnet</p>
+          <p className="text-zinc-400 mt-2">{t.sub}</p>
         </header>
 
         {/* Stats Neon */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
           {[
-            { label: "TOTAL EVENTS", value: entries.length },
-            { label: "LAST 24H", value: entries.length },
-            { label: "SUCCESS RATE", value: "100%" },
-            { label: "AVG GAS", value: "—" },
+            { label: t.totalEvents.toUpperCase(), value: entries.length },
+            { label: t.last24h.toUpperCase(), value: entries.length },
+            { label: t.successRate.toUpperCase(), value: "100%" },
+            { label: t.avgGas.toUpperCase(), value: "—" },
           ].map((s, i) => (
             <div key={i} className="neon-box p-6 border border-red-500/30 bg-zinc-900/50">
               <div className="text-[10px] tracking-widest text-red-400/70 mb-2">{s.label}</div>
@@ -138,7 +153,7 @@ export const AuditPage = () => {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="SEARCH HASH / ACTION..."
+            placeholder={t.search.toUpperCase()}
             className="w-full bg-zinc-900 border border-red-500/40 focus:border-red-500 pl-12 py-4 rounded-2xl text-lg placeholder:text-zinc-600 focus:outline-none neon-input"
           />
         </div>
@@ -148,11 +163,11 @@ export const AuditPage = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-red-500/30 bg-zinc-950">
-                <th className="px-8 py-5 text-left text-xs font-mono uppercase tracking-widest text-red-400">Timestamp</th>
-                <th className="px-8 py-5 text-left text-xs font-mono uppercase tracking-widest text-red-400">Action</th>
-                <th className="px-8 py-5 text-left text-xs font-mono uppercase tracking-widest text-red-400">Target</th>
-                <th className="px-8 py-5 text-left text-xs font-mono uppercase tracking-widest text-red-400">Status</th>
-                <th className="px-8 py-5 text-right text-xs font-mono uppercase tracking-widest text-red-400">TX HASH</th>
+                <th className="px-8 py-5 text-left text-xs font-mono uppercase tracking-widest text-red-400">{t.time}</th>
+                <th className="px-8 py-5 text-left text-xs font-mono uppercase tracking-widest text-red-400">{t.action}</th>
+                <th className="px-8 py-5 text-left text-xs font-mono uppercase tracking-widest text-red-400">{t.target}</th>
+                <th className="px-8 py-5 text-left text-xs font-mono uppercase tracking-widest text-red-400">{t.status}</th>
+                <th className="px-8 py-5 text-right text-xs font-mono uppercase tracking-widest text-red-400">{t.tx}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-red-500/10">
