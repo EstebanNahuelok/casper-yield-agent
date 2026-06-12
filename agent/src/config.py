@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     # Contratos
     vault_contract_hash: str = "hash-6c5fe09ddc4ca76adfa2790bf7a58767eba32020a50e606a14a8ef803a89a06a"
+    vault_package_hash: str = "a44b0f0f83462cdc10172a0576ec760363fc1f25ca6dd92da9df1e2200a78c88"
     scspr_contract_hash: str
 
     # Red

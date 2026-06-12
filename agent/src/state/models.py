@@ -14,6 +14,7 @@ class Decision(BaseModel):
     action: Action
     reasoning: str
     amount: Optional[float] = None
+    amount_out: Optional[float] = None
     token_in: Optional[str] = None
     token_out: Optional[str] = None
 

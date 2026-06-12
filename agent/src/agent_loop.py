@@ -96,7 +96,7 @@ async def _collect_market_data(
 async def _run_cycle(
     casper: CasperMCPClient,
     trade: CSPRTradeRestClient,
-    llm: GroqDecisionEngine,
+    llm: SwarmDecisionEngine,
     executor: ChainExecutor,
 ) -> None:
     # 1. Observar
@@ -116,6 +116,11 @@ async def _run_cycle(
     market_summary = json.dumps(market.model_dump(), default=str, ensure_ascii=False)
     decision, votes = await llm.decide_with_votes(market_summary)
     log.info("agent.decision", action=decision.action, reasoning=decision.reasoning)
+
+    # 2b. Completar amount_out con la quote real del AMM (necesario para execute_swap)
+    if decision.action == Action.SWAP and decision.amount:
+        quote = await trade.get_quote(decision.amount)
+        decision.amount_out = quote.get("amount_out", 0.0)
 
     # 3. Ejecutar si corresponde
     deploy_hash: str | None = None
@@ -146,12 +151,7 @@ async def agent_loop() -> None:
     # Espera activa hasta que el Casper MCP local esté disponible
     await _connect_with_retry(casper)
 
-    executor = ChainExecutor(casper)
-
-    # Registra el agente en el contrato (firmado como owner). Idempotente: si ya
-    # fue inicializado el contrato loguea un warning y continúa.
-    await state_store.update_status("initializing_contract")
-    await executor.initialize_contract()
+    executor = ChainExecutor()
 
     await state_store.update_status("running")
     log.info("agent.loop_started")
