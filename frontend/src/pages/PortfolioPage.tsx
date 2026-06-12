@@ -86,7 +86,7 @@ export const PortfolioPage = () => {
                                     className={`
             px-4 py-2 rounded-lg text-xs font-mono transition
             ${range === r
-                                            ? "bg-brand text-zinc-950"
+                                            ? "bg-red-500 text-zinc-950"
                                             : "text-zinc-500 hover:text-zinc-200"
                                         }
           `}

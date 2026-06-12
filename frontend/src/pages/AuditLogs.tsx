@@ -97,9 +97,9 @@ export const AuditPage = () => {
             <div className="size-6 bg-red-500 rounded flex items-center justify-center neon-glow">
               <div className="size-2 bg-black rounded-full" />
             </div>
-            <span className="font-medium text-zinc-100 tracking-tight neon-text">CASPER AUTOPILOT</span>
+            <span className="font-medium text-zinc-100 tracking-tight neon-text-red">CASPER AUTOPILOT</span>
           </div>
-          <Link to="/" className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors">
+          <Link to="/dashboard" className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors">
             <ArrowLeft className="size-4" /> BACK
           </Link>
         </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Eye, Brain, Zap, FileText, Github, ExternalLink } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAgentWallet } from "../context/AgentWalletContext";
 import { WalletConnect } from "#components/WalletConnect";
 import { ProfileMenu } from "#components/ProfileOptions";
@@ -62,6 +62,7 @@ const dict = {
         ctaDesc: "Every transaction is real and verifiable on Casper Testnet.",
         ctaViewTx: "View transactions",
         ctaSource: "Source code",
+        connectWallet: "Connect wallet",
         footer: "Casper Agentic Buildathon 2026",
         nav: { how: "How it works", features: "Features", roadmap: "Roadmap" },
     },
@@ -123,6 +124,7 @@ const dict = {
         ctaDesc: "Cada transacción es real y verificable en Casper Testnet.",
         ctaViewTx: "Ver transacciones",
         ctaSource: "Ver código fuente",
+        connectWallet: "Conectar wallet",
         footer: "Casper Agentic Buildathon 2026",
         nav: { how: "Cómo funciona", features: "Features", roadmap: "Roadmap" },
     },
@@ -157,6 +159,12 @@ function LoopTicker({ labels }: { labels: string[] }) {
 
 export const LandingPage = () => {
     const { connected: walletConnected, address: walletAddress, connect, disconnect: disconnectWallet } = useAgentWallet();
+    const navigate = useNavigate();
+
+    const handleConnectAndRedirect = async () => {
+        await connect();
+        navigate("/dashboard");
+    };
 
     const [lang, setLang] = useState<Lang>("es");
     const t = dict[lang];
@@ -181,7 +189,7 @@ export const LandingPage = () => {
                         <div className="neon-glow flex h-9 w-9 items-center justify-center rounded-xl bg-red-500 text-black">
                             <Zap className="h-5 w-5" />
                         </div>
-                        <span className="font-mono text-2xl font-bold tracking-tighter neon-text">YIELDAGENT</span>
+                        <span className="font-mono text-2xl font-bold tracking-tighter neon-text-red">YIELDAGENT</span>
                     </div>
 
                     <div className="hidden items-center gap-8 text-sm md:flex">
@@ -191,6 +199,20 @@ export const LandingPage = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
+                        <div className="inline-flex items-center rounded-lg border border-red-500/30 bg-zinc-900/40 p-0.5">
+                            {(["en", "es"] as const).map((l) => (
+                                <button
+                                    key={l}
+                                    onClick={() => setLang(l)}
+                                    className={`px-2 py-1 text-[10px] font-mono uppercase tracking-wider rounded-md transition-colors ${
+                                        lang === l ? "bg-red-500 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"
+                                    }`}
+                                    aria-pressed={lang === l}
+                                >
+                                    {l}
+                                </button>
+                            ))}
+                        </div>
                         {walletConnected ? (
                             <ProfileMenu
                                 walletAddress={walletAddress}
@@ -199,7 +221,7 @@ export const LandingPage = () => {
                         ) : (
                             <WalletConnect
                                 connectWallet={t.connectWallet}
-                                onConnected={connect}
+                                onConnected={handleConnectAndRedirect}
                             />
                         )}
                     </div>
@@ -208,7 +230,7 @@ export const LandingPage = () => {
 
             {/* HERO */}
             <section className="relative mx-auto max-w-5xl px-6 pt-28 pb-20 text-center">
-                <div className="inline-flex items-center gap-2 rounded-full border border-red-500/30 px-4 py-1 font-mono text-xs tracking-widest text-red-400 neon-text">
+                <div className="inline-flex items-center gap-2 rounded-full border border-red-500/30 px-4 py-1 font-mono text-xs tracking-widest text-red-400 neon-text-red">
                     CASPER AGENTIC BUILDATHON 2026 • TESTNET LIVE
                 </div>
 
@@ -226,10 +248,10 @@ export const LandingPage = () => {
                 </div>
 
                 <div className="mt-12 flex flex-wrap justify-center gap-4">
-                    <Link to="/" className="neon-button group flex items-center gap-3 rounded-2xl bg-red-500 px-10 py-4 text-lg font-bold text-black hover:bg-red-600">
+                    <Link to="/dashboard" className="neon-button group flex items-center gap-3 rounded-2xl bg-red-500 px-10 py-4 text-lg font-bold text-black hover:bg-red-600">
                         {t.ctaDashboard} <ArrowUpRight className="group-hover:rotate-45 transition" />
                     </Link>
-                    <a href="https://testnet.cspr.live" target="_blank" className="neon-border-button flex items-center gap-3 rounded-2xl border border-red-500/50 px-8 py-4 text-lg hover:border-red-400">
+                    <a href="https://testnet.cspr.live/contract-package/a44b0f0f83462cdc10172a0576ec760363fc1f25ca6dd92da9df1e2200a78c88" target="_blank" className="neon-border-button flex items-center gap-3 rounded-2xl border border-red-500/50 px-8 py-4 text-lg hover:border-red-400">
                         {t.ctaExplorer}
                     </a>
                 </div>
@@ -317,10 +339,10 @@ export const LandingPage = () => {
                 <h2 className="text-5xl font-bold neon-text-red mb-4">{t.ctaTitle}</h2>
                 <p className="text-xl text-zinc-400 mb-10">{t.ctaDesc}</p>
                 <div className="flex flex-wrap justify-center gap-4">
-                    <Link to="/" className="neon-button px-10 py-4 text-xl font-bold rounded-2xl">
+                    <Link to="/dashboard" className="neon-button px-10 py-4 text-xl font-bold rounded-2xl">
                         {t.ctaDashboard}
                     </Link>
-                    <a href="https://github.com" target="_blank" className="neon-border-button px-10 py-4 text-xl rounded-2xl flex items-center gap-3">
+                    <a href="https://github.com/EstebanNahuelok/casper-yield-agent" target="_blank" className="neon-border-button px-10 py-4 text-xl rounded-2xl flex items-center gap-3">
                         {t.ctaSource} <Github />
                     </a>
                 </div>

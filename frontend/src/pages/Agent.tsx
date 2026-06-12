@@ -125,7 +125,7 @@ export const StrategyPage=() =>{
     <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans pb-16">
       <nav className="border-b border-zinc-900 bg-zinc-950/50 backdrop-blur-sm sticky top-0 z-30">
         <div className="mx-auto max-w-7xl px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors text-sm">
+          <Link to="/dashboard" className="flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors text-sm">
             <ArrowLeft className="size-4" />
             <span>{t.back}</span>
           </Link>

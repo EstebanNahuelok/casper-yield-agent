@@ -241,7 +241,7 @@ function RangePicker({ value, onChange }: { value: Range; onChange: (r: Range) =
                     key={r}
                     onClick={() => onChange(r)}
                     className={`px-3 py-1 text-[10px] font-mono uppercase tracking-wider rounded-md transition-colors ${value === r
-                        ? "bg-brand text-zinc-950"
+                        ? "bg-red-500 text-zinc-950"
                         : "text-zinc-500 hover:text-zinc-300"
                         }`}
                 >
