@@ -938,6 +938,46 @@ export const Dashboard = () => {
                                             </div>
                                         )}
 
+                                        {/* Swarm Panel */}
+                                        {status?.last_swarm_result && (
+                                            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 mb-4">
+                                                <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">
+                                                    Swarm ·{" "}
+                                                    <span className={status.last_swarm_result.final_action === "SWAP"
+                                                        ? "text-brand font-bold"
+                                                        : "text-zinc-400 font-bold"
+                                                    }>
+                                                        {status.last_swarm_result.vote_tally["SWAP"] ?? 0} SWAP
+                                                        {" / "}
+                                                        {status.last_swarm_result.vote_tally["HOLD"] ?? 0} HOLD
+                                                        {" → "}
+                                                        {status.last_swarm_result.final_action}
+                                                    </span>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {status.last_swarm_result.votes.map((vote: any) => (
+                                                        <div key={vote.agent_name} className="flex items-start gap-2">
+                                                            <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-0.5 ${
+                                                                vote.action === "SWAP"
+                                                                    ? "bg-brand/10 text-brand"
+                                                                    : "bg-zinc-800 text-zinc-400"
+                                                            }`}>
+                                                                {vote.action}
+                                                            </span>
+                                                            <div>
+                                                                <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-wide">
+                                                                    {vote.agent_name.replace(/_/g, " ")}
+                                                                </div>
+                                                                <p className="text-[10px] text-zinc-400 leading-relaxed">
+                                                                    {vote.reasoning}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Errors */}
                                         {status?.errors?.length > 0 && (
                                             <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 mb-4">
