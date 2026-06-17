@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAgentWallet } from "../context/AgentWalletContext";
 import { WalletConnect } from "#components/WalletConnect";
 import { ProfileMenu } from "#components/ProfileOptions";
+
 type Lang = "en" | "es";
 
 const dict = {
@@ -47,7 +48,7 @@ const dict = {
         featuresSub: "Built for the buildathon",
         features: [
             { t: "Onchain audit", d: "Every decision is logged inside the YieldVault contract." },
-            { t: "MCP-native", d: "Talks directly to Casper MCP and CSPR.trade MCP." },
+            { t: "Casper-native", d: "Talks directly to the Casper blockchain using pycspr and Casper RPC. No MCP CallContract." },
             { t: "Claude reasoning", d: "Uses LLM reasoning to weigh APY, slippage and liquidity." },
             { t: "CSPR.click", d: "Wallet flow ready for jury demo." },
             { t: "Live dashboard", d: "Real-time visibility of every agent action." },
@@ -70,8 +71,7 @@ const dict = {
         badge: "Casper Agentic Buildathon 2026 · Testnet activo",
         heroLine1: "Tu capital.",
         heroLine2: "El agente decide.",
-        heroSub:
-            "Un agente de IA autónomo que monitorea pools DeFi en Casper Network, ejecuta swaps cuando el APY lo justifica y loguea cada decisión on-chain.",
+        heroSub: "Un agente de IA autónomo que monitorea pools DeFi en Casper Network, ejecuta swaps cuando el APY lo justifica y loguea cada decisión on-chain.",
         ctaDashboard: "Abrir dashboard en vivo",
         ctaExplorer: "Explorador testnet",
         loopTitle: "agent.py · loop principal",
@@ -100,17 +100,16 @@ const dict = {
         steps: [
             { t: "Observar", d: "Lee balance del vault, precios CSPR/sCSPR y APY del pool via Casper MCP y CSPR.trade MCP." },
             { t: "Decidir", d: "Claude analiza las condiciones: si el APY sube +2% y slippage < 1.5%, el veredicto es SWAP. Si no, HOLD." },
-            { t: "Ejecutar", d: "Firma y envía la transacción on-chain via CSPR.click. Llama a execute_swap() en el contrato YieldVault." },
-            { t: "Loguear", d: "Registra la decisión on-chain con log_action() para que el jurado y cualquiera pueda auditarla." },
+            { t: "Ejecutar", d: "Firma y envía la transacción on-chain via CSPR.click." },
+            { t: "Loguear", d: "Registra la decisión on-chain con log_action()." },
         ],
-        featuresTitle: "Features",
+        featuresTitle: "Características",
         featuresSub: "Construido para el buildathon",
         features: [
             { t: "Auditoría onchain", d: "Cada decisión se loguea dentro del contrato YieldVault. Totalmente trazable." },
-            { t: "MCP-native", d: "Habla directamente con Casper MCP y CSPR.trade MCP. Sin glue code." },
+            { t: "Casper-native", d: "Se comunica directamente con la blockchain de Casper usando pycspr y Casper RPC." },
             { t: "Razonamiento Claude", d: "Usa LLM para pesar APY, slippage y liquidez en cada paso." },
             { t: "CSPR.click", d: "Flujo de wallet listo para la demo del jurado con firma nativa Casper." },
-            { t: "Contrato Odra", d: "YieldVault en Rust: deposit, swap, log_action, withdraw." },
             { t: "Dashboard en vivo", d: "Los operadores ven cada acción del agente con timestamps y tx hashes." },
         ],
         roadmapTitle: "Roadmap",
@@ -126,7 +125,7 @@ const dict = {
         ctaSource: "Ver código fuente",
         connectWallet: "Conectar wallet",
         footer: "Casper Agentic Buildathon 2026",
-        nav: { how: "Cómo funciona", features: "Features", roadmap: "Roadmap" },
+        nav: { how: "Cómo funciona", features: "Características", roadmap: "Roadmap" },
     },
 } as const;
 
@@ -193,9 +192,9 @@ export const LandingPage = () => {
                     </div>
 
                     <div className="hidden items-center gap-8 text-sm md:flex">
-                        <a href="#how" className="hover:text-red-400 transition-colors">HOW IT WORKS</a>
-                        <a href="#features" className="hover:text-red-400 transition-colors">FEATURES</a>
-                        <a href="#roadmap" className="hover:text-red-400 transition-colors">ROADMAP</a>
+                        <a href="#how" className="hover:text-red-400 transition-colors">{t.nav.how}</a>
+                        <a href="#features" className="hover:text-red-400 transition-colors">{t.nav.features}</a>
+                        <a href="#roadmap" className="hover:text-red-400 transition-colors">{t.nav.roadmap}</a>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -231,12 +230,12 @@ export const LandingPage = () => {
             {/* HERO */}
             <section className="relative mx-auto max-w-5xl px-6 pt-28 pb-20 text-center">
                 <div className="inline-flex items-center gap-2 rounded-full border border-red-500/30 px-4 py-1 font-mono text-xs tracking-widest text-red-400 neon-text-red">
-                    CASPER AGENTIC BUILDATHON 2026 • TESTNET LIVE
+                    {t.badge}
                 </div>
 
                 <h1 className="mt-8 text-6xl md:text-7xl font-bold tracking-tighter leading-none neon-text-red">
-                    YOUR CAPITAL.<br />
-                    THE AGENT DECIDES.
+                    {t.heroLine1}<br />
+                    {t.heroLine2}
                 </h1>
 
                 <p className="mx-auto mt-6 max-w-2xl text-xl text-zinc-400">
@@ -262,19 +261,19 @@ export const LandingPage = () => {
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                     <div className="neon-box p-6">
                         <div className="text-4xl font-mono font-bold text-red-400">1,248</div>
-                        <div className="text-sm text-zinc-500 mt-1">DECISIONS LOGGED</div>
+                        <div className="text-sm text-zinc-500 mt-1">{t.stats.decisions}</div>
                     </div>
                     <div className="neon-box p-6">
                         <div className="text-4xl font-mono font-bold text-red-400">99.8%</div>
-                        <div className="text-sm text-zinc-500 mt-1">UPTIME</div>
+                        <div className="text-sm text-zinc-500 mt-1">{t.stats.uptime}</div>
                     </div>
                     <div className="neon-box p-6">
                         <div className="text-4xl font-mono font-bold text-red-400">+2.8%</div>
-                        <div className="text-sm text-zinc-500 mt-1">AVG APY DELTA</div>
+                        <div className="text-sm text-zinc-500 mt-1">{t.stats.avgApy}</div>
                     </div>
                     <div className="neon-box p-6">
                         <div className="text-4xl font-mono font-bold text-red-400">5m</div>
-                        <div className="text-sm text-zinc-500 mt-1">CYCLE TIME</div>
+                        <div className="text-sm text-zinc-500 mt-1">{t.stats.latency}</div>
                     </div>
                 </div>
             </section>
@@ -301,6 +300,7 @@ export const LandingPage = () => {
             <section id="features" className="mx-auto max-w-7xl px-6 py-20 bg-black/40">
                 <div className="text-center mb-12">
                     <h2 className="text-4xl font-bold neon-text-red">{t.featuresTitle}</h2>
+                    <p className="text-zinc-400 mt-3">{t.featuresSub}</p>
                 </div>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {t.features.map((f, i) => (
@@ -316,6 +316,7 @@ export const LandingPage = () => {
             <section id="roadmap" className="mx-auto max-w-7xl px-6 py-20">
                 <div className="text-center mb-12">
                     <h2 className="text-4xl font-bold neon-text-red">{t.roadmapTitle}</h2>
+                    <p className="text-zinc-400 mt-3">{t.roadmapSub}</p>
                 </div>
                 <div className="grid gap-6 md:grid-cols-3">
                     {t.roadmap.map((phase, i) => (
@@ -342,14 +343,18 @@ export const LandingPage = () => {
                     <Link to="/dashboard" className="neon-button px-10 py-4 text-xl font-bold rounded-2xl">
                         {t.ctaDashboard}
                     </Link>
-                    <a href="https://github.com/EstebanNahuelok/casper-yield-agent" target="_blank" className="neon-border-button px-10 py-4 text-xl rounded-2xl flex items-center gap-3">
+                    <a 
+                        href="https://github.com/EstebanNahuelok/casper-yield-agent" 
+                        target="_blank" 
+                        className="neon-border-button px-10 py-4 text-xl rounded-2xl flex items-center gap-3"
+                    >
                         {t.ctaSource} <Github />
                     </a>
                 </div>
             </section>
 
             <footer className="border-t border-red-500/20 py-8 text-center text-sm text-zinc-500">
-                Casper Agentic Buildathon 2026 • Built with neon and real on-chain decisions
+                {t.footer} • Built with neon and real on-chain decisions
             </footer>
 
             {/* Neon Styles */}

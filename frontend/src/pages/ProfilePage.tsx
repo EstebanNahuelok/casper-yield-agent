@@ -8,12 +8,14 @@ import {
     Activity,
     Copy,
 } from "lucide-react";
+import { useAgentWallet } from "../context/AgentWalletContext";
 
 export const ProfilePage = () => {
     const [name, setName] = useState("");
+    const {address}=useAgentWallet()
 
-    const walletAddress =
-        "0202ca422d30d0335415bd64fe98e5508a75d20394e5cb1c682e5dec24e19237f71f";
+    const walletAddress =address
+
 
     const copyAddress = async () => {
         await navigator.clipboard.writeText(walletAddress);
@@ -187,9 +189,7 @@ export const ProfilePage = () => {
                             </div>
 
                             <div>
-                                <label className="mb-2 block text-xs uppercase tracking-widest text-zinc-500">
-                                    Wallet Email
-                                </label>
+
 
                                 <input
                                     disabled

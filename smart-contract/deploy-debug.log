@@ -1,5 +1,0 @@
-💁  [1;32mINFO :[0m [32mDeploy mode: default[0m
-💁  [1;32mINFO :[0m [32mDeploying YieldVault with agent: account-hash-9aff699d6b6be610644357d8fc1eb1f3c622110b553f9402a0e836ecbfc96b84[0m
-💁  [1;32mINFO :[0m [32mFound wasm under "/home/maurezg7/Documentos/agents/casper-yield-agent/wasm/YieldVault.wasm".[0m
-💁  [1;32mINFO :[0m [32mDeploying "YieldVault".[0m
-🤦  [1;31mERROR :[0m [31mDeploy error: ExecutionError(ContractDeploymentError)[0m
