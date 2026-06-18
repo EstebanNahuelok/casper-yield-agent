@@ -15,4 +15,7 @@ pub enum VaultError {
     ArithmeticOverflow  = 30_005,
     InvalidInputLength  = 30_006,
     InvalidSwap         = 30_007,
+    PoolNotSet          = 30_008,
+    InsufficientLiquidity = 30_009,
+    SlippageExceeded    = 30_010,
 }
