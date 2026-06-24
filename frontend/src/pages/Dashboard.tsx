@@ -14,7 +14,7 @@ import {
 import {
     Bot, ChevronDown, ChevronRight, ExternalLink, Info, Wallet, X, Vault,
     ArrowRightLeft, ChevronLeft,
-    Send,
+    Send, Zap,
 } from "lucide-react";
 import { useCasperTransaction } from "#hooks/useCasperTransaction";
 const EXPLORER = "https://testnet.cspr.live/deploy/";
@@ -514,7 +514,6 @@ export const Dashboard = () => {
     const [actionAmount, setActionAmount] = useState<string>("50"); // valor por defecto
     const { status, loading } = useAgentStatus();
 
-    console.log(status);
     const [selectedPool, setSelectedPool] = useState<Pool | null>(null);
     const [range, setRange] = useState<Range>("24H");
     const series = useMemo(() => buildSeries(range), [range]);
@@ -548,7 +547,6 @@ export const Dashboard = () => {
     //     setWalletAddress("");
     // };
     const { connected: walletConnected, address: walletAddress, connect, disconnect: disconnectWallet } = useAgentWallet();
-
     const [nextCycle, setNextCycle] = useState(42);
     const [lang, setLang] = useState<Lang>("en");
     const t = dict[lang];
@@ -635,52 +633,41 @@ export const Dashboard = () => {
     return (
         <LangContext.Provider value={{ lang, t }}>
             <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans selection:bg-brand/30 pb-16">
-                <nav className="border-b border-zinc-900 bg-zinc-950/50 backdrop-blur-sm sticky top-0 z-30">
-                    <div className="mx-auto max-w-7xl px-6 h-14 flex items-center justify-between">
+                <nav className="sticky top-0 z-50 border-b border-red-500/20 bg-black/90 backdrop-blur-md">
+                    <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="size-6 bg-brand rounded-sm flex items-center justify-center">
-                                <div className="size-2 bg-zinc-950 rounded-full" />
+                            <div className="flex items-center gap-3">
+                                <div className="neon-glow flex h-9 w-9 items-center justify-center rounded-xl bg-red-500 text-black">
+                                    <Zap className="h-5 w-5" />
+                                </div>
+                                <span className="font-mono text-xl font-bold tracking-tighter neon-text-red">YIELDAGENT</span>
                             </div>
-                            <span className="font-medium text-zinc-100 tracking-tight">Casper Autopilot</span>
-                            <div className="hidden md:flex items-center gap-6 ml-6">
-                                <Link
-                                    to="/agent"
-                                    className="text-red-500 font-semibold"
-                                    style={{
-                                        textShadow: `
-                                        0 0 10px #ff2d2d,
-                                        0 0 10px #ff2d2d,
-                                        0 0 10px #ff2d2d,
-                                        0 0 40px #ff2d2d
-                                        `
-                                    }}
-                                >
-                                    Agent
-                                </Link>
 
-                                <Link
-                                    to="/audit"
-                                    className="text-red-500 font-semibold"
-                                    style={{
-                                        textShadow: `
-                                        0 0 10px #ff2d2d,
-                                        0 0 10px #ff2d2d,
-                                        0 0 10px #ff2d2d,
-                                        0 0 40px #ff2d2d
-                                        `
-                                    }}
-                                >
-                                    Audit Logs
-                                </Link>
-                            </div>
-                            <div className="h-4 w-px bg-zinc-800 mx-2" />
-                            <div className="flex items-center gap-2">
+                            {walletConnected && (
+                                <div className="hidden md:flex items-center gap-6 ml-6">
+                                    <Link
+                                        to="/agent"
+                                        className="text-sm font-mono uppercase tracking-wider text-red-400 hover:text-red-300 transition-colors neon-text-red"
+                                    >
+                                        Agent
+                                    </Link>
+                                    <Link
+                                        to="/audit"
+                                        className="text-sm font-mono uppercase tracking-wider text-red-400 hover:text-red-300 transition-colors neon-text-red"
+                                    >
+                                        Audit Logs
+                                    </Link>
+                                </div>
+                            )}
+
+                            <div className="h-4 w-px bg-red-500/20 mx-2 hidden md:block" />
+                            <div className="hidden sm:flex items-center gap-2">
                                 <div className="size-2 rounded-full bg-emerald-500 animate-pulse-soft" />
                                 <span className="text-xs font-mono uppercase tracking-wider text-emerald-500/80">
                                     {t.agentActive}
                                 </span>
                             </div>
-                            <div className="hidden md:flex items-center gap-2 pl-3 ml-1 border-l border-zinc-800">
+                            <div className="hidden lg:flex items-center gap-2 pl-3 ml-1 border-l border-red-500/20">
                                 <span className="text-[10px] uppercase tracking-widest text-zinc-500">
                                     {t.nextCycle}
                                 </span>
@@ -690,6 +677,7 @@ export const Dashboard = () => {
                                 </span>
                             </div>
                         </div>
+
                         <div className="flex items-center gap-4">
                             <div className="hidden md:flex flex-col items-end">
                                 <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium">
@@ -697,12 +685,12 @@ export const Dashboard = () => {
                                 </span>
                                 <span className="text-xs font-mono text-zinc-300">casper-test-03</span>
                             </div>
-                            <div className="inline-flex items-center rounded-lg border border-zinc-800 bg-zinc-900/40 p-0.5">
+                            <div className="inline-flex items-center rounded-lg border border-red-500/30 bg-zinc-900/40 p-0.5">
                                 {(["en", "es"] as const).map((l) => (
                                     <button
                                         key={l}
                                         onClick={() => setLang(l)}
-                                        className={`px-2 py-1 text-[10px] font-mono uppercase tracking-wider rounded-md transition-colors ${lang === l ? "bg-zinc-800 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
+                                        className={`px-2 py-1 text-[10px] font-mono uppercase tracking-wider rounded-md transition-colors ${lang === l ? "bg-red-500 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"
                                             }`}
                                         aria-pressed={lang === l}
                                     >
@@ -716,620 +704,635 @@ export const Dashboard = () => {
                                         walletAddress={walletAddress}
                                         onDisconnect={disconnectWallet}
                                     />
-                                ) : (
-                                    <WalletConnect
-                                        connectWallet={t.connectWallet}
-                                        onConnected={connect}
-                                    />
-                                )}
+                                ) : null}
                             </div>
                         </div>
                     </div>
                 </nav>
-
-                <main className="mx-auto max-w-7xl px-6 py-10">
-                    <h1 className="sr-only">Casper Autopilot Dashboard</h1>
-
-                    {/* Hero */}
-                    <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                        <div className="md:col-span-2 p-6 rounded-xl bg-zinc-900/50 border border-zinc-800 flex flex-col justify-between">
-                            <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <h2 className="text-xs font-medium uppercase tracking-widest text-zinc-500 mb-4">
-                                        Total Vault Balance
-                                    </h2>
-                                    <div className="flex items-baseline gap-3">
-                                        <span className="text-5xl font-medium text-zinc-100 tracking-tight leading-none tabular-nums">
-                                            {status?.balance_cspr ? status.balance_cspr.toLocaleString() : "0"}
-                                        </span>
-                                        <span className="text-xl font-mono text-brand">CSPR</span>
-                                    </div>
-                                    <p className="mt-2 text-sm text-zinc-500 font-mono">
-                                        ≈ ${status?.balance_cspr ? (status.balance_cspr * 0.034).toFixed(2) : "0.00"} USD
-                                    </p>
-                                </div>
-                                <RangePicker value={range} onChange={setRange} />
+                {/* Contenido principal condicional */}
+                {!walletConnected ? (
+                    <div className="flex min-h-[calc(100vh-56px)] items-center justify-center px-6">
+                        <div className="max-w-md text-center">
+                            <div className="mx-auto size-20 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-8">
+                                <Wallet className="size-10 text-zinc-500" />
                             </div>
-
-                            <div className="mt-6 h-40">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={series} margin={{ top: 10, right: 4, left: -16, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="bal" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#ff2d2d" stopOpacity={0.45} />
-                                                <stop offset="100%" stopColor="#ff2d2d" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid stroke="#18181b" vertical={false} />
-                                        <XAxis
-                                            dataKey="label"
-                                            stroke="#52525b"
-                                            tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            interval="preserveStartEnd"
-                                        />
-                                        <YAxis
-                                            stroke="#52525b"
-                                            tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                                            width={48}
-                                        />
-                                        <Tooltip content={<ChartTooltip unit=" CSPR" />} cursor={{ stroke: "#3f3f46" }} />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="balance"
-                                            stroke="#ff2d2d"
-                                            strokeWidth={1.8}
-                                            fill="url(#bal)"
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </div>
-
-                            <div className="mt-4 flex gap-8 border-t border-zinc-800 pt-5">
-                                <div>
-                                    <span className="block text-[10px] uppercase text-zinc-500 mb-1">{range} {t.rangeChange}</span>
-                                    <span className="text-sm font-mono text-emerald-400">+0.0%</span>
-                                </div>
-                                <div>
-                                    <span className="block text-[10px] uppercase text-zinc-500 mb-1">{t.activePositions}</span>
-                                    <span className="text-sm font-mono text-zinc-200">1</span>
-                                </div>
-                                <div>
-                                    <span className="block text-[10px] uppercase text-zinc-500 mb-1">{t.totalDeploys}</span>
-                                    <span className="text-sm font-mono text-zinc-200">
-                                        {status?.actions_taken ?? "0"}
-                                    </span>
-                                </div>
-                            </div>
+                            <h2 className="text-3xl font-semibold text-zinc-100 mb-3">Conecta tu Wallet</h2>
+                            <p className="text-zinc-400 mb-8 text-lg">
+                                Es necesario conectar una wallet de Casper para acceder al dashboard del agente autónomo.
+                            </p>
+                            <WalletConnect
+                                connectWallet={t.connectWallet}
+                                onConnected={connect}
+                            />
                         </div>
+                    </div>
+                ) :
+                    (
+                        <main className="mx-auto max-w-7xl px-6 py-10">
+                            <h1 className="sr-only">Casper Autopilot Dashboard</h1>
 
-                        <div className="flex flex-col gap-3">
-                            {/* Dots */}
-                            <div className="flex justify-center gap-2">
-                                {[0, 1].map((i) => (
-                                    <button
-                                        key={i}
-                                        onClick={() => setSlide(i)}
-                                        className={`size-1.5 rounded-full transition-all duration-200 ${slide === i ? "bg-brand scale-150" : "bg-zinc-700"
-                                            }`}
-                                    />
-                                ))}
-                            </div>
-
-                            {/* Track */}
-                            <div className="overflow-hidden rounded-xl">
-                                <div
-                                    className="flex transition-transform duration-300 ease-in-out"
-                                    style={{ transform: `translateX(-${slide * 100}%)` }}
-                                >
-                                    {/* SLIDE 0 — Agent Status */}
-                                    <div className="min-w-full p-6 rounded-xl bg-red-500/5 border border-red-500/40 shadow-[0_0_20px_rgba(255,45,45,0.25)]">
-
-                                        {/* Agent active pill */}
-                                        <div className="flex items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/5 p-4 mb-5">
-                                            <Bot
-                                                className="size-10 text-green-400"
-                                                style={{ filter: "drop-shadow(0 0 6px #22c55e) drop-shadow(0 0 12px #22c55e)" }}
-                                            />
-                                            <div className="flex flex-col gap-0.5">
-                                                <span
-                                                    className="font-mono text-green-400 uppercase tracking-[0.2em] text-sm"
-                                                    style={{ textShadow: "0 0 5px #22c55e, 0 0 10px #22c55e, 0 0 20px #22c55e" }}
-                                                >
-                                                    {loading ? "LOADING..." : status?.status === "running" ? "AGENT IS ACTIVE" : "AGENT STOPPED"}
+                            {/* Hero */}
+                            <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                                <div className="md:col-span-2 p-6 rounded-xl bg-zinc-900/50 border border-zinc-800 flex flex-col justify-between">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <h2 className="text-xs font-medium uppercase tracking-widest text-zinc-500 mb-4">
+                                                Total Vault Balance
+                                            </h2>
+                                            <div className="flex items-baseline gap-3">
+                                                <span className="text-5xl font-medium text-zinc-100 tracking-tight leading-none tabular-nums">
+                                                    {status?.balance_cspr ? status.balance_cspr.toLocaleString() : "0"}
                                                 </span>
-                                                {status?.last_updated && (
-                                                    <span className="text-[9px] font-mono text-green-500/50 uppercase tracking-widest">
-                                                        Updated {new Date(status.last_updated).toLocaleTimeString()}
-                                                    </span>
-                                                )}
+                                                <span className="text-xl font-mono text-brand">CSPR</span>
                                             </div>
+                                            <p className="mt-2 text-sm text-zinc-500 font-mono">
+                                                ≈ ${status?.balance_cspr ? (status.balance_cspr * 0.034).toFixed(2) : "0.00"} USD
+                                            </p>
                                         </div>
+                                        <RangePicker value={range} onChange={setRange} />
+                                    </div>
 
-                                        {/* Title */}
-                                        <h2
-                                            className="text-xs font-medium uppercase tracking-widest text-red-400 mb-4"
-                                            style={{ textShadow: "0 0 5px #ff2d2d, 0 0 10px #ff2d2d" }}
-                                        >
-                                            {t.agentStrategy}
-                                        </h2>
+                                    <div className="mt-6 h-40">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={series} margin={{ top: 10, right: 4, left: -16, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="bal" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="#ff2d2d" stopOpacity={0.45} />
+                                                        <stop offset="100%" stopColor="#ff2d2d" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid stroke="#18181b" vertical={false} />
+                                                <XAxis
+                                                    dataKey="label"
+                                                    stroke="#52525b"
+                                                    tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    interval="preserveStartEnd"
+                                                />
+                                                <YAxis
+                                                    stroke="#52525b"
+                                                    tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                                                    width={48}
+                                                />
+                                                <Tooltip content={<ChartTooltip unit=" CSPR" />} cursor={{ stroke: "#3f3f46" }} />
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey="balance"
+                                                    stroke="#ff2d2d"
+                                                    strokeWidth={1.8}
+                                                    fill="url(#bal)"
+                                                />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
 
-                                        {/* Stats grid */}
-                                        <div className="grid grid-cols-2 gap-2 mb-4">
-                                            {[
-                                                {
-                                                    label: "Balance",
-                                                    value: status?.balance_cspr != null ? `${status.balance_cspr.toLocaleString()} CSPR` : "—",
-                                                    color: "text-zinc-200",
-                                                },
-                                                {
-                                                    label: t.totalDeploys,
-                                                    value: status?.actions_taken != null ? String(status.actions_taken) : "—",
-                                                    color: "text-zinc-200",
-                                                },
-                                                {
-                                                    label: "Pool APY",
-                                                    value: status?.last_market_data?.pool_apy != null ? `${status.last_market_data.pool_apy.toFixed(2)}%` : "—",
-                                                    color: "text-emerald-400",
-                                                },
-                                                {
-                                                    label: t.nextCycle,
-                                                    value: `${String(Math.floor(nextCycle / 60)).padStart(2, "0")}:${String(nextCycle % 60).padStart(2, "0")}`,
-                                                    color: "text-red-400",
-                                                },
-                                            ].map(({ label, value, color }) => (
-                                                <div key={label} className="rounded-lg border border-red-500/15 bg-red-500/5 p-3">
-                                                    <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1">{label}</div>
-                                                    <div className={`text-sm font-mono font-semibold ${color}`}>{value}</div>
-                                                </div>
-                                            ))}
+                                    <div className="mt-4 flex gap-8 border-t border-zinc-800 pt-5">
+                                        <div>
+                                            <span className="block text-[10px] uppercase text-zinc-500 mb-1">{range} {t.rangeChange}</span>
+                                            <span className="text-sm font-mono text-emerald-400">+0.0%</span>
                                         </div>
-
-                                        {/* APY threshold row */}
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-sm text-zinc-300">{t.apyThreshold}</span>
-                                            <span
-                                                className="text-sm font-mono text-red-400"
-                                                style={{ textShadow: "0 0 5px #ff2d2d, 0 0 10px #ff2d2d" }}
-                                            >
-                                                &gt;12.5%
+                                        <div>
+                                            <span className="block text-[10px] uppercase text-zinc-500 mb-1">{t.activePositions}</span>
+                                            <span className="text-sm font-mono text-zinc-200">1</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[10px] uppercase text-zinc-500 mb-1">{t.totalDeploys}</span>
+                                            <span className="text-sm font-mono text-zinc-200">
+                                                {status?.actions_taken ?? "0"}
                                             </span>
                                         </div>
+                                    </div>
+                                </div>
 
-                                        {/* Progress bar — current APY vs threshold */}
-                                        <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden mb-1">
-                                            <div
-                                                className="h-full bg-green-400 rounded-full transition-all duration-500"
-                                                style={{
-                                                    width: status?.last_market_data?.pool_apy
-                                                        ? `${Math.min((status.last_market_data.pool_apy / 25) * 100, 100).toFixed(0)}%`
-                                                        : "0%",
-                                                }}
+                                <div className="flex flex-col gap-3">
+                                    {/* Dots */}
+                                    <div className="flex justify-center gap-2">
+                                        {[0, 1].map((i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => setSlide(i)}
+                                                className={`size-1.5 rounded-full transition-all duration-200 ${slide === i ? "bg-brand scale-150" : "bg-zinc-700"
+                                                    }`}
                                             />
-                                        </div>
-                                        <div className="text-[10px] text-zinc-600 text-right font-mono mb-3">
-                                            Current APY {status?.last_market_data?.current_apy?.toFixed(2) ?? "—"}%
-                                        </div>
+                                        ))}
+                                    </div>
 
-                                        {/* Last decision box */}
-                                        {status?.last_decision && (
-                                            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 mb-4">
-                                                <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Last decision</div>
-                                                <div className="flex items-center justify-between mb-1.5">
-                                                    <span className="text-xs font-mono font-semibold text-zinc-100">
-                                                        {status.last_decision.action}
-                                                    </span>
-                                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${status.last_decision.action === "HOLD"
-                                                        ? "bg-zinc-800 text-zinc-400"
-                                                        : status.last_decision.action === "SWAP"
-                                                            ? "bg-brand/10 text-brand"
-                                                            : "bg-emerald-500/10 text-emerald-500"
-                                                        }`}>
-                                                        {status.last_decision.action}
-                                                    </span>
-                                                </div>
-                                                <p className="text-[10px] text-zinc-500 leading-relaxed">
-                                                    {status.last_decision.reasoning}
-                                                </p>
-                                            </div>
-                                        )}
+                                    {/* Track */}
+                                    <div className="overflow-hidden rounded-xl">
+                                        <div
+                                            className="flex transition-transform duration-300 ease-in-out"
+                                            style={{ transform: `translateX(-${slide * 100}%)` }}
+                                        >
+                                            {/* SLIDE 0 — Agent Status */}
+                                            <div className="min-w-full p-6 rounded-xl bg-red-500/5 border border-red-500/40 shadow-[0_0_20px_rgba(255,45,45,0.25)]">
 
-                                        {/* Swarm Panel */}
-                                        {status?.last_swarm_result && (
-                                            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 mb-4">
-                                                <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">
-                                                    Swarm ·{" "}
-                                                    <span className={status.last_swarm_result.final_action === "SWAP"
-                                                        ? "text-brand font-bold"
-                                                        : "text-zinc-400 font-bold"
-                                                    }>
-                                                        {status.last_swarm_result.vote_tally["SWAP"] ?? 0} SWAP
-                                                        {" / "}
-                                                        {status.last_swarm_result.vote_tally["HOLD"] ?? 0} HOLD
-                                                        {" → "}
-                                                        {status.last_swarm_result.final_action}
-                                                    </span>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    {status.last_swarm_result.votes.map((vote: any) => (
-                                                        <div key={vote.agent_name} className="flex items-start gap-2">
-                                                            <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-0.5 ${
-                                                                vote.action === "SWAP"
-                                                                    ? "bg-brand/10 text-brand"
-                                                                    : "bg-zinc-800 text-zinc-400"
-                                                            }`}>
-                                                                {vote.action}
+                                                {/* Agent active pill */}
+                                                <div className="flex items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/5 p-4 mb-5">
+                                                    <Bot
+                                                        className="size-10 text-green-400"
+                                                        style={{ filter: "drop-shadow(0 0 6px #22c55e) drop-shadow(0 0 12px #22c55e)" }}
+                                                    />
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span
+                                                            className="font-mono text-green-400 uppercase tracking-[0.2em] text-sm"
+                                                            style={{ textShadow: "0 0 5px #22c55e, 0 0 10px #22c55e, 0 0 20px #22c55e" }}
+                                                        >
+                                                            {loading ? "LOADING..." : status?.status === "running" ? "AGENT IS ACTIVE" : "AGENT STOPPED"}
+                                                        </span>
+                                                        {status?.last_updated && (
+                                                            <span className="text-[9px] font-mono text-green-500/50 uppercase tracking-widest">
+                                                                Updated {new Date(status.last_updated).toLocaleTimeString()}
                                                             </span>
-                                                            <div>
-                                                                <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-wide">
-                                                                    {vote.agent_name.replace(/_/g, " ")}
-                                                                </div>
-                                                                <p className="text-[10px] text-zinc-400 leading-relaxed">
-                                                                    {vote.reasoning}
-                                                                </p>
-                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Title */}
+                                                <h2
+                                                    className="text-xs font-medium uppercase tracking-widest text-red-400 mb-4"
+                                                    style={{ textShadow: "0 0 5px #ff2d2d, 0 0 10px #ff2d2d" }}
+                                                >
+                                                    {t.agentStrategy}
+                                                </h2>
+
+                                                {/* Stats grid */}
+                                                <div className="grid grid-cols-2 gap-2 mb-4">
+                                                    {[
+                                                        {
+                                                            label: "Balance",
+                                                            value: status?.balance_cspr != null ? `${status.balance_cspr.toLocaleString()} CSPR` : "—",
+                                                            color: "text-zinc-200",
+                                                        },
+                                                        {
+                                                            label: t.totalDeploys,
+                                                            value: status?.actions_taken != null ? String(status.actions_taken) : "—",
+                                                            color: "text-zinc-200",
+                                                        },
+                                                        {
+                                                            label: "Pool APY",
+                                                            value: status?.last_market_data?.pool_apy != null ? `${status.last_market_data.pool_apy.toFixed(2)}%` : "—",
+                                                            color: "text-emerald-400",
+                                                        },
+                                                        {
+                                                            label: t.nextCycle,
+                                                            value: `${String(Math.floor(nextCycle / 60)).padStart(2, "0")}:${String(nextCycle % 60).padStart(2, "0")}`,
+                                                            color: "text-red-400",
+                                                        },
+                                                    ].map(({ label, value, color }) => (
+                                                        <div key={label} className="rounded-lg border border-red-500/15 bg-red-500/5 p-3">
+                                                            <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1">{label}</div>
+                                                            <div className={`text-sm font-mono font-semibold ${color}`}>{value}</div>
                                                         </div>
                                                     ))}
                                                 </div>
-                                            </div>
-                                        )}
 
-                                        {/* Errors */}
-                                        {status?.errors?.length > 0 && (
-                                            <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 mb-4">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <div className="text-[9px] uppercase tracking-widest text-red-400">
-                                                        Errors ({status.errors.length})
-                                                    </div>
-                                                    <div className="size-1.5 rounded-full bg-red-500 animate-pulse" />
+                                                {/* APY threshold row */}
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-sm text-zinc-300">{t.apyThreshold}</span>
+                                                    <span
+                                                        className="text-sm font-mono text-red-400"
+                                                        style={{ textShadow: "0 0 5px #ff2d2d, 0 0 10px #ff2d2d" }}
+                                                    >
+                                                        &gt;12.5%
+                                                    </span>
                                                 </div>
-                                                <div className="max-h-16 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-red-500/20 scrollbar-track-transparent pr-1">
-                                                    {status.errors.map((e: string, i: number) => (
-                                                        <p
-                                                            key={i}
-                                                            className="text-[10px] text-red-300/70 font-mono leading-relaxed truncate"
-                                                            title={e}
-                                                        >
-                                                            › {e.length > 48 ? e.slice(0, 48) + "…" : e}
+
+                                                {/* Progress bar — current APY vs threshold */}
+                                                <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden mb-1">
+                                                    <div
+                                                        className="h-full bg-green-400 rounded-full transition-all duration-500"
+                                                        style={{
+                                                            width: status?.last_market_data?.pool_apy
+                                                                ? `${Math.min((status.last_market_data.pool_apy / 25) * 100, 100).toFixed(0)}%`
+                                                                : "0%",
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="text-[10px] text-zinc-600 text-right font-mono mb-3">
+                                                    Current APY {status?.last_market_data?.current_apy?.toFixed(2) ?? "—"}%
+                                                </div>
+
+                                                {/* Last decision box */}
+                                                {status?.last_decision && (
+                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 mb-4">
+                                                        <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Last decision</div>
+                                                        <div className="flex items-center justify-between mb-1.5">
+                                                            <span className="text-xs font-mono font-semibold text-zinc-100">
+                                                                {status.last_decision.action}
+                                                            </span>
+                                                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${status.last_decision.action === "HOLD"
+                                                                ? "bg-zinc-800 text-zinc-400"
+                                                                : status.last_decision.action === "SWAP"
+                                                                    ? "bg-brand/10 text-brand"
+                                                                    : "bg-emerald-500/10 text-emerald-500"
+                                                                }`}>
+                                                                {status.last_decision.action}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[10px] text-zinc-500 leading-relaxed">
+                                                            {status.last_decision.reasoning}
                                                         </p>
+                                                    </div>
+                                                )}
+
+                                                {/* Swarm Panel */}
+                                                {status?.last_swarm_result && (
+                                                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 mb-4">
+                                                        <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">
+                                                            Swarm ·{" "}
+                                                            <span className={status.last_swarm_result.final_action === "SWAP"
+                                                                ? "text-brand font-bold"
+                                                                : "text-zinc-400 font-bold"
+                                                            }>
+                                                                {status.last_swarm_result.vote_tally["SWAP"] ?? 0} SWAP
+                                                                {" / "}
+                                                                {status.last_swarm_result.vote_tally["HOLD"] ?? 0} HOLD
+                                                                {" → "}
+                                                                {status.last_swarm_result.final_action}
+                                                            </span>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            {status.last_swarm_result.votes.map((vote: any) => (
+                                                                <div key={vote.agent_name} className="flex items-start gap-2">
+                                                                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-0.5 ${vote.action === "SWAP"
+                                                                        ? "bg-brand/10 text-brand"
+                                                                        : "bg-zinc-800 text-zinc-400"
+                                                                        }`}>
+                                                                        {vote.action}
+                                                                    </span>
+                                                                    <div>
+                                                                        <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-wide">
+                                                                            {vote.agent_name.replace(/_/g, " ")}
+                                                                        </div>
+                                                                        <p className="text-[10px] text-zinc-400 leading-relaxed">
+                                                                            {vote.reasoning}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Errors */}
+                                                {status?.errors?.length > 0 && (
+                                                    <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 mb-4">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="text-[9px] uppercase tracking-widest text-red-400">
+                                                                Errors ({status.errors.length})
+                                                            </div>
+                                                            <div className="size-1.5 rounded-full bg-red-500 animate-pulse" />
+                                                        </div>
+                                                        <div className="max-h-16 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-red-500/20 scrollbar-track-transparent pr-1">
+                                                            {status.errors.map((e: string, i: number) => (
+                                                                <p
+                                                                    key={i}
+                                                                    className="text-[10px] text-red-300/70 font-mono leading-relaxed truncate"
+                                                                    title={e}
+                                                                >
+                                                                    › {e.length > 48 ? e.slice(0, 48) + "…" : e}
+                                                                </p>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Button */}
+                                                <button
+                                                    className="w-full py-2 px-3 rounded-lg text-sm font-semibold text-white border border-red-500/60 bg-red-500/10 hover:bg-red-500/20 transition-all shadow-[0_0_15px_rgba(255,45,45,0.35)]"
+                                                    style={{ textShadow: "0 0 5px #ff2d2d, 0 0 10px #ff2d2d" }}
+                                                >
+                                                    {t.updateStrategy}
+                                                </button>
+                                            </div>
+
+                                            {/* SLIDE 1 — Vault Actions */}
+                                            <div className="min-w-full p-6 rounded-xl bg-indigo-500/5 border border-indigo-500/30">
+                                                {/* Balance */}
+                                                <div className="flex items-center gap-3 mb-5">
+                                                    <div className="size-10 rounded-lg bg-indigo-500/10 border border-indigo-500/25 grid place-items-center">
+                                                        <Vault className="size-5 text-indigo-400" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-semibold text-indigo-400 uppercase tracking-wider text-sm">
+                                                            Vault actions
+                                                        </h3>
+                                                        <p className="text-[10px] text-zinc-500 uppercase tracking-wider">
+                                                            Execute manual operations
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Balance box */}
+                                                {/* Balance box */}
+                                                <div className="rounded-lg border border-indigo-500/15 bg-indigo-500/5 p-3 mb-4">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div>
+                                                            <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1">
+                                                                Total vault balance
+                                                            </div>
+                                                            <div className="text-xl font-mono text-zinc-100">
+                                                                {status?.balance_cspr ? status.balance_cspr.toLocaleString() : "0"}{" "}
+                                                                <span className="text-sm text-indigo-400">CSPR</span>
+                                                            </div>
+                                                            <div className="text-[10px] text-zinc-500 mt-0.5">
+                                                                ≈ ${status?.balance_cspr ? (status.balance_cspr * 0.034).toFixed(2) : "0.00"} USD
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-[9px] px-2 py-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 uppercase tracking-widest">
+                                                            Testnet
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Stats */}
+                                                <div className="grid grid-cols-3 gap-1.5 mb-4">
+                                                    {[
+                                                        { l: "Staked", v: "184,200", c: "text-emerald-400" },
+                                                        { l: "Rewards 24h", v: "+42.18", c: "text-emerald-400" },
+                                                        { l: "Gas price", v: "1.2 gwei", c: "text-zinc-200" },
+                                                    ].map(({ l, v, c }) => (
+                                                        <div key={l} className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2 text-center">
+                                                            <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1">{l}</div>
+                                                            <div className={`text-xs font-mono ${c}`}>{v}</div>
+                                                        </div>
                                                     ))}
                                                 </div>
-                                            </div>
-                                        )}
 
-                                        {/* Button */}
+                                                <div className="space-y-4">
+                                                    {/* Amount Input */}
+                                                    <div>
+                                                        <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1">Amount (CSPR)</div>
+                                                        <input
+                                                            type="number"
+                                                            value={actionAmount}
+                                                            onChange={(e) => setActionAmount(e.target.value)}
+                                                            className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-zinc-100 focus:border-indigo-500 outline-none text-lg font-mono"
+                                                            placeholder="50.0"
+                                                        />
+                                                    </div>
+
+                                                    {/* Action Buttons */}
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        {[
+                                                            { label: "Deposit", action: "deposit", color: "indigo" },
+                                                            { label: "Withdraw", action: "withdraw", color: "zinc" },
+                                                            { label: "Stake", action: "stake", color: "emerald" },
+                                                            { label: "Swap", action: "swap", color: "brand" },
+                                                        ].map(({ label, action, color }) => (
+                                                            <button
+                                                                key={action}
+                                                                onClick={() => executeAction(action)}
+                                                                className={`py-3 px-4 rounded-xl border text-sm font-semibold transition-all hover:scale-[1.02] ${color === "indigo"
+                                                                    ? "border-indigo-500 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20"
+                                                                    : color === "emerald"
+                                                                        ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                                                                        : color === "brand"
+                                                                            ? "border-brand bg-brand/10 text-brand hover:bg-brand/20"
+                                                                            : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800"
+                                                                    }`}
+                                                            >
+                                                                {label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+
+                                                    <button
+                                                        onClick={() => executeAction("execute")}
+                                                        className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-indigo-500/50 bg-indigo-500/10 text-indigo-400 font-semibold text-base hover:bg-indigo-500/20 transition-all"
+                                                    >
+                                                        <Send size={18} />
+                                                        Execute Transaction
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Nav buttons */}
+                                    <div className="flex justify-center gap-2">
                                         <button
-                                            className="w-full py-2 px-3 rounded-lg text-sm font-semibold text-white border border-red-500/60 bg-red-500/10 hover:bg-red-500/20 transition-all shadow-[0_0_15px_rgba(255,45,45,0.35)]"
-                                            style={{ textShadow: "0 0 5px #ff2d2d, 0 0 10px #ff2d2d" }}
+                                            onClick={() => setSlide(0)}
+                                            className="size-8 rounded-md border border-zinc-800 bg-zinc-900 text-zinc-500 hover:border-brand hover:text-brand transition-colors grid place-items-center"
                                         >
-                                            {t.updateStrategy}
+                                            <ChevronLeft className="size-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => setSlide(1)}
+                                            className="size-8 rounded-md border border-zinc-800 bg-zinc-900 text-zinc-500 hover:border-brand hover:text-brand transition-colors grid place-items-center"
+                                        >
+                                            <ChevronRight className="size-4" />
                                         </button>
                                     </div>
+                                </div>
+                            </section>
 
-                                    {/* SLIDE 1 — Vault Actions */}
-                                    <div className="min-w-full p-6 rounded-xl bg-indigo-500/5 border border-indigo-500/30">
-                                        {/* Balance */}
-                                        <div className="flex items-center gap-3 mb-5">
-                                            <div className="size-10 rounded-lg bg-indigo-500/10 border border-indigo-500/25 grid place-items-center">
-                                                <Vault className="size-5 text-indigo-400" />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-semibold text-indigo-400 uppercase tracking-wider text-sm">
-                                                    Vault actions
-                                                </h3>
-                                                <p className="text-[10px] text-zinc-500 uppercase tracking-wider">
-                                                    Execute manual operations
-                                                </p>
-                                            </div>
+                            {/* On-chain telemetry trends */}
+                            <section className="mb-12">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h3 className="text-sm font-medium text-zinc-100">{t.onchainTelemetry}</h3>
+                                        <p className="text-[10px] font-mono text-zinc-500 mt-0.5">
+                                            {t.telemetrySub} · {range} {t.window}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="rounded-xl border border-zinc-900 bg-zinc-900/30 p-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-[10px] uppercase tracking-widest text-zinc-500">
+                                                {t.gasPrice}
+                                            </span>
+                                            <span className="text-xs font-mono text-zinc-200">1.2 gwei</span>
                                         </div>
-
-                                        {/* Balance box */}
-                                        {/* Balance box */}
-                                        <div className="rounded-lg border border-indigo-500/15 bg-indigo-500/5 p-3 mb-4">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div>
-                                                    <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1">
-                                                        Total vault balance
-                                                    </div>
-                                                    <div className="text-xl font-mono text-zinc-100">
-                                                        {status?.balance_cspr ? status.balance_cspr.toLocaleString() : "0"}{" "}
-                                                        <span className="text-sm text-indigo-400">CSPR</span>
-                                                    </div>
-                                                    <div className="text-[10px] text-zinc-500 mt-0.5">
-                                                        ≈ ${status?.balance_cspr ? (status.balance_cspr * 0.034).toFixed(2) : "0.00"} USD
-                                                    </div>
-                                                </div>
-                                                <span className="text-[9px] px-2 py-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 uppercase tracking-widest">
-                                                    Testnet
-                                                </span>
-                                            </div>
+                                        <div className="h-28">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <LineChart data={series} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
+                                                    <CartesianGrid stroke="#18181b" vertical={false} />
+                                                    <XAxis
+                                                        dataKey="label"
+                                                        stroke="#52525b"
+                                                        tick={{ fontSize: 9, fontFamily: "JetBrains Mono" }}
+                                                        tickLine={false}
+                                                        axisLine={false}
+                                                        interval="preserveStartEnd"
+                                                    />
+                                                    <YAxis
+                                                        stroke="#52525b"
+                                                        tick={{ fontSize: 9, fontFamily: "JetBrains Mono" }}
+                                                        tickLine={false}
+                                                        axisLine={false}
+                                                        width={36}
+                                                    />
+                                                    <Tooltip content={<ChartTooltip unit=" gwei" />} cursor={{ stroke: "#3f3f46" }} />
+                                                    <Line
+                                                        type="monotone"
+                                                        dataKey="gas"
+                                                        stroke="#10b981"
+                                                        strokeWidth={1.5}
+                                                        dot={false}
+                                                    />
+                                                </LineChart>
+                                            </ResponsiveContainer>
                                         </div>
+                                    </div>
 
-                                        {/* Stats */}
-                                        <div className="grid grid-cols-3 gap-1.5 mb-4">
-                                            {[
-                                                { l: "Staked", v: "184,200", c: "text-emerald-400" },
-                                                { l: "Rewards 24h", v: "+42.18", c: "text-emerald-400" },
-                                                { l: "Gas price", v: "1.2 gwei", c: "text-zinc-200" },
-                                            ].map(({ l, v, c }) => (
-                                                <div key={l} className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2 text-center">
-                                                    <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1">{l}</div>
-                                                    <div className={`text-xs font-mono ${c}`}>{v}</div>
-                                                </div>
-                                            ))}
+                                    <div className="rounded-xl border border-zinc-900 bg-zinc-900/30 p-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-[10px] uppercase tracking-widest text-zinc-500">
+                                                {t.nodeLatency}
+                                            </span>
+                                            <span className="text-xs font-mono text-zinc-200">42 ms</span>
                                         </div>
-
-                                        <div className="space-y-4">
-                                            {/* Amount Input */}
-                                            <div>
-                                                <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1">Amount (CSPR)</div>
-                                                <input
-                                                    type="number"
-                                                    value={actionAmount}
-                                                    onChange={(e) => setActionAmount(e.target.value)}
-                                                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-zinc-100 focus:border-indigo-500 outline-none text-lg font-mono"
-                                                    placeholder="50.0"
-                                                />
-                                            </div>
-
-                                            {/* Action Buttons */}
-                                            <div className="grid grid-cols-2 gap-3">
-                                                {[
-                                                    { label: "Deposit", action: "deposit", color: "indigo" },
-                                                    { label: "Withdraw", action: "withdraw", color: "zinc" },
-                                                    { label: "Stake", action: "stake", color: "emerald" },
-                                                    { label: "Swap", action: "swap", color: "brand" },
-                                                ].map(({ label, action, color }) => (
-                                                    <button
-                                                        key={action}
-                                                        onClick={() => executeAction(action)}
-                                                        className={`py-3 px-4 rounded-xl border text-sm font-semibold transition-all hover:scale-[1.02] ${color === "indigo"
-                                                            ? "border-indigo-500 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20"
-                                                            : color === "emerald"
-                                                                ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                                                                : color === "brand"
-                                                                    ? "border-brand bg-brand/10 text-brand hover:bg-brand/20"
-                                                                    : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800"
-                                                            }`}
-                                                    >
-                                                        {label}
-                                                    </button>
-                                                ))}
-                                            </div>
-
-                                            <button
-                                                onClick={() => executeAction("execute")}
-                                                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-indigo-500/50 bg-indigo-500/10 text-indigo-400 font-semibold text-base hover:bg-indigo-500/20 transition-all"
-                                            >
-                                                <Send size={18} />
-                                                Execute Transaction
-                                            </button>
+                                        <div className="h-28">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <LineChart data={series} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
+                                                    <CartesianGrid stroke="#18181b" vertical={false} />
+                                                    <XAxis
+                                                        dataKey="label"
+                                                        stroke="#52525b"
+                                                        tick={{ fontSize: 9, fontFamily: "JetBrains Mono" }}
+                                                        tickLine={false}
+                                                        axisLine={false}
+                                                        interval="preserveStartEnd"
+                                                    />
+                                                    <YAxis
+                                                        stroke="#52525b"
+                                                        tick={{ fontSize: 9, fontFamily: "JetBrains Mono" }}
+                                                        tickLine={false}
+                                                        axisLine={false}
+                                                        width={36}
+                                                    />
+                                                    <Tooltip content={<ChartTooltip unit=" ms" />} cursor={{ stroke: "#3f3f46" }} />
+                                                    <Line
+                                                        type="monotone"
+                                                        dataKey="latency"
+                                                        stroke="#ff2d2d"
+                                                        strokeWidth={1.5}
+                                                        dot={false}
+                                                    />
+                                                </LineChart>
+                                            </ResponsiveContainer>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </section>
 
-                            {/* Nav buttons */}
-                            <div className="flex justify-center gap-2">
-                                <button
-                                    onClick={() => setSlide(0)}
-                                    className="size-8 rounded-md border border-zinc-800 bg-zinc-900 text-zinc-500 hover:border-brand hover:text-brand transition-colors grid place-items-center"
-                                >
-                                    <ChevronLeft className="size-4" />
-                                </button>
-                                <button
-                                    onClick={() => setSlide(1)}
-                                    className="size-8 rounded-md border border-zinc-800 bg-zinc-900 text-zinc-500 hover:border-brand hover:text-brand transition-colors grid place-items-center"
-                                >
-                                    <ChevronRight className="size-4" />
-                                </button>
-                            </div>
-                        </div>
-                    </section>
+                            {/* Scanner + Decisions */}
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                                <div className="lg:col-span-7 space-y-6">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-sm font-medium text-zinc-100">{t.opportunityScanner}</h3>
+                                        <span className="text-[10px] font-mono text-zinc-500">{t.clickPool}</span>
+                                    </div>
 
-                    {/* On-chain telemetry trends */}
-                    <section className="mb-12">
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 className="text-sm font-medium text-zinc-100">{t.onchainTelemetry}</h3>
-                                <p className="text-[10px] font-mono text-zinc-500 mt-0.5">
-                                    {t.telemetrySub} · {range} {t.window}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="rounded-xl border border-zinc-900 bg-zinc-900/30 p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-[10px] uppercase tracking-widest text-zinc-500">
-                                        {t.gasPrice}
-                                    </span>
-                                    <span className="text-xs font-mono text-zinc-200">1.2 gwei</span>
+                                    <div className="overflow-hidden rounded-xl border border-zinc-900 bg-zinc-950">
+                                        <table className="w-full text-left text-sm">
+                                            <thead>
+                                                <tr className="border-b border-zinc-900 bg-zinc-900/30">
+                                                    <th className="px-4 py-3 font-medium text-zinc-500 text-xs uppercase">{t.poolName}</th>
+                                                    <th className="px-4 py-3 font-medium text-zinc-500 text-xs uppercase">APY</th>
+                                                    <th className="px-4 py-3 font-medium text-zinc-500 text-xs uppercase">TVL</th>
+                                                    <th className="px-4 py-3 font-medium text-zinc-500 text-xs uppercase text-right">
+                                                        {t.status}
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-zinc-900/50">
+                                                {pools.map((p) => (
+                                                    <tr
+                                                        key={p.pair}
+                                                        onClick={() => setSelectedPool(p)}
+                                                        className={`cursor-pointer transition-colors ${selectedPool?.pair === p.pair
+                                                            ? "bg-zinc-900/60"
+                                                            : "hover:bg-zinc-900/40"
+                                                            }`}
+                                                    >
+                                                        <td className="px-4 py-4 font-medium text-zinc-200">{p.pair}</td>
+                                                        <td
+                                                            className={`px-4 py-4 font-mono ${p.muted ? "text-zinc-400" : "text-emerald-400"
+                                                                }`}
+                                                        >
+                                                            {p.apy}
+                                                        </td>
+                                                        <td className="px-4 py-4 font-mono text-zinc-400 text-xs">{p.tvl}</td>
+                                                        <td className="px-4 py-4 text-right">
+                                                            <StatusBadge status={p.status} tone={p.tone} />
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div className="p-4 rounded-xl bg-zinc-900/20 border border-zinc-900 flex items-center gap-4">
+                                        <div className="shrink-0 size-8 rounded-full bg-zinc-800 flex items-center justify-center">
+                                            <Info className="size-4 text-zinc-500" />
+                                        </div>
+                                        <p className="text-xs text-zinc-500 text-pretty">
+                                            {t.scannerHint}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="h-28">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={series} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
-                                            <CartesianGrid stroke="#18181b" vertical={false} />
-                                            <XAxis
-                                                dataKey="label"
-                                                stroke="#52525b"
-                                                tick={{ fontSize: 9, fontFamily: "JetBrains Mono" }}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                interval="preserveStartEnd"
-                                            />
-                                            <YAxis
-                                                stroke="#52525b"
-                                                tick={{ fontSize: 9, fontFamily: "JetBrains Mono" }}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                width={36}
-                                            />
-                                            <Tooltip content={<ChartTooltip unit=" gwei" />} cursor={{ stroke: "#3f3f46" }} />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="gas"
-                                                stroke="#10b981"
-                                                strokeWidth={1.5}
-                                                dot={false}
-                                            />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
 
-                            <div className="rounded-xl border border-zinc-900 bg-zinc-900/30 p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-[10px] uppercase tracking-widest text-zinc-500">
-                                        {t.nodeLatency}
-                                    </span>
-                                    <span className="text-xs font-mono text-zinc-200">42 ms</span>
-                                </div>
-                                <div className="h-28">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={series} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
-                                            <CartesianGrid stroke="#18181b" vertical={false} />
-                                            <XAxis
-                                                dataKey="label"
-                                                stroke="#52525b"
-                                                tick={{ fontSize: 9, fontFamily: "JetBrains Mono" }}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                interval="preserveStartEnd"
-                                            />
-                                            <YAxis
-                                                stroke="#52525b"
-                                                tick={{ fontSize: 9, fontFamily: "JetBrains Mono" }}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                width={36}
-                                            />
-                                            <Tooltip content={<ChartTooltip unit=" ms" />} cursor={{ stroke: "#3f3f46" }} />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="latency"
-                                                stroke="#ff2d2d"
-                                                strokeWidth={1.5}
-                                                dot={false}
-                                            />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
+                                <div className="lg:col-span-5">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-sm font-medium text-zinc-100">{t.reasoningFeed}</h3>
+                                        <span className="text-[10px] font-mono text-zinc-500">{t.expandDrill}</span>
+                                    </div>
 
-                    {/* Scanner + Decisions */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                        <div className="lg:col-span-7 space-y-6">
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-sm font-medium text-zinc-100">{t.opportunityScanner}</h3>
-                                <span className="text-[10px] font-mono text-zinc-500">{t.clickPool}</span>
-                            </div>
-
-                            <div className="overflow-hidden rounded-xl border border-zinc-900 bg-zinc-950">
-                                <table className="w-full text-left text-sm">
-                                    <thead>
-                                        <tr className="border-b border-zinc-900 bg-zinc-900/30">
-                                            <th className="px-4 py-3 font-medium text-zinc-500 text-xs uppercase">{t.poolName}</th>
-                                            <th className="px-4 py-3 font-medium text-zinc-500 text-xs uppercase">APY</th>
-                                            <th className="px-4 py-3 font-medium text-zinc-500 text-xs uppercase">TVL</th>
-                                            <th className="px-4 py-3 font-medium text-zinc-500 text-xs uppercase text-right">
-                                                {t.status}
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-zinc-900/50">
-                                        {pools.map((p) => (
-                                            <tr
-                                                key={p.pair}
-                                                onClick={() => setSelectedPool(p)}
-                                                className={`cursor-pointer transition-colors ${selectedPool?.pair === p.pair
-                                                    ? "bg-zinc-900/60"
-                                                    : "hover:bg-zinc-900/40"
-                                                    }`}
-                                            >
-                                                <td className="px-4 py-4 font-medium text-zinc-200">{p.pair}</td>
-                                                <td
-                                                    className={`px-4 py-4 font-mono ${p.muted ? "text-zinc-400" : "text-emerald-400"
-                                                        }`}
-                                                >
-                                                    {p.apy}
-                                                </td>
-                                                <td className="px-4 py-4 font-mono text-zinc-400 text-xs">{p.tvl}</td>
-                                                <td className="px-4 py-4 text-right">
-                                                    <StatusBadge status={p.status} tone={p.tone} />
-                                                </td>
-                                            </tr>
+                                    <div className="space-y-6 relative">
+                                        <div className="absolute left-[11px] top-2 bottom-2 w-px bg-zinc-900" />
+                                        {decisions.map((d) => (
+                                            <DecisionRow key={d.id} d={d} />
                                         ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                    </div>
 
-                            <div className="p-4 rounded-xl bg-zinc-900/20 border border-zinc-900 flex items-center gap-4">
-                                <div className="shrink-0 size-8 rounded-full bg-zinc-800 flex items-center justify-center">
-                                    <Info className="size-4 text-zinc-500" />
+                                    <button className="w-full mt-10 py-3 border border-zinc-900 text-xs font-medium uppercase tracking-widest text-zinc-500 rounded-lg hover:text-zinc-300 hover:border-zinc-700 transition-colors">
+                                        {t.viewAudit}
+                                    </button>
                                 </div>
-                                <p className="text-xs text-zinc-500 text-pretty">
-                                    {t.scannerHint}
-                                </p>
                             </div>
-                        </div>
+                            <footer className="fixed bottom-0 left-0 right-0 border-t border-zinc-900 bg-zinc-950/80 backdrop-blur-md z-30">
+                                <div className="mx-auto max-w-7xl px-6 h-10 flex items-center justify-between text-[10px] font-mono text-zinc-600">
+                                    <div className="flex gap-6">
+                                        <span>
+                                            LATENCY:{" "}
+                                            <span className="text-zinc-400">
+                                                {status?.last_market_data?.estimated_slippage != null
+                                                    ? `${(status.last_market_data.estimated_slippage * 100).toFixed(2)}% slippage`
+                                                    : "42ms"}
+                                            </span>
+                                        </span>
+                                        <span>
+                                            CSPR/USD:{" "}
+                                            <span className="text-zinc-400">
+                                                ${status?.last_market_data?.cspr_price_usd?.toFixed(5) ?? "—"}
+                                            </span>
+                                        </span>
+                                        <span>
+                                            BALANCE:{" "}
+                                            <span className="text-zinc-400">
+                                                {status?.balance_cspr != null ? `${status.balance_cspr.toLocaleString()} CSPR` : "—"}
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <span className={status?.status === "running" ? "text-emerald-500/60" : "text-red-500/60"}>
+                                            {status?.status?.toUpperCase() ?? t.connected}
+                                        </span>
+                                        <span>v0.12.4-BETA</span>
+                                    </div>
+                                </div>
+                            </footer>
+                        </main>
+                    )
+                }
 
-                        <div className="lg:col-span-5">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-sm font-medium text-zinc-100">{t.reasoningFeed}</h3>
-                                <span className="text-[10px] font-mono text-zinc-500">{t.expandDrill}</span>
-                            </div>
-
-                            <div className="space-y-6 relative">
-                                <div className="absolute left-[11px] top-2 bottom-2 w-px bg-zinc-900" />
-                                {decisions.map((d) => (
-                                    <DecisionRow key={d.id} d={d} />
-                                ))}
-                            </div>
-
-                            <button className="w-full mt-10 py-3 border border-zinc-900 text-xs font-medium uppercase tracking-widest text-zinc-500 rounded-lg hover:text-zinc-300 hover:border-zinc-700 transition-colors">
-                                {t.viewAudit}
-                            </button>
-                        </div>
-                    </div>
-                </main>
-                <footer className="fixed bottom-0 left-0 right-0 border-t border-zinc-900 bg-zinc-950/80 backdrop-blur-md z-30">
-                    <div className="mx-auto max-w-7xl px-6 h-10 flex items-center justify-between text-[10px] font-mono text-zinc-600">
-                        <div className="flex gap-6">
-                            <span>
-                                LATENCY:{" "}
-                                <span className="text-zinc-400">
-                                    {status?.last_market_data?.estimated_slippage != null
-                                        ? `${(status.last_market_data.estimated_slippage * 100).toFixed(2)}% slippage`
-                                        : "42ms"}
-                                </span>
-                            </span>
-                            <span>
-                                CSPR/USD:{" "}
-                                <span className="text-zinc-400">
-                                    ${status?.last_market_data?.cspr_price_usd?.toFixed(5) ?? "—"}
-                                </span>
-                            </span>
-                            <span>
-                                BALANCE:{" "}
-                                <span className="text-zinc-400">
-                                    {status?.balance_cspr != null ? `${status.balance_cspr.toLocaleString()} CSPR` : "—"}
-                                </span>
-                            </span>
-                        </div>
-                        <div className="flex gap-4">
-                            <span className={status?.status === "running" ? "text-emerald-500/60" : "text-red-500/60"}>
-                                {status?.status?.toUpperCase() ?? t.connected}
-                            </span>
-                            <span>v0.12.4-BETA</span>
-                        </div>
-                    </div>
-                </footer>
 
                 <PoolDetailSheet pool={selectedPool} onClose={() => setSelectedPool(null)} />
             </div >
