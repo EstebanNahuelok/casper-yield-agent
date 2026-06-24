@@ -1,13 +1,19 @@
 import json
 
 import structlog
-from pycspr.types.cl import CLV_String, CLV_U512
 
 from ..config import settings
 from ..state.models import Decision
-from .pycspr_signer import build_contract_call_deploy, load_owner_private_key, submit_deploy
 
 log = structlog.get_logger()
+
+try:
+    from pycspr.types.cl import CLV_String, CLV_U512
+    from .pycspr_signer import build_contract_call_deploy, load_owner_private_key, submit_deploy
+    HAS_PYCSPR = True
+except ImportError:
+    log.warning("pycspr not available - ChainExecutor will run in mock mode")
+    HAS_PYCSPR = False
 
 MAX_PARAMS_LEN = 512  # límite de bytes para `params` en log_action (vault.rs)
 
@@ -31,6 +37,8 @@ class ChainExecutor:
         """
         Llama a execute_swap(token_in, token_out, amount_in, amount_out) firmado con la
         owner key. Devuelve el deploy hash.
+
+        En mock mode (sin pycspr), devuelve un hash simulado.
         """
         amount_in_motes = int(decision.amount * 1_000_000_000)  # CSPR → motes
         amount_out_motes = int((decision.amount_out or 0.0) * 1_000_000_000)
@@ -41,6 +49,11 @@ class ChainExecutor:
             token_in=decision.token_in,
             token_out=decision.token_out,
         )
+
+        if not HAS_PYCSPR:
+            mock_hash = f"mock_deploy_{abs(hash(str(decision))) % 1000000:06d}"
+            log.warning("chain.execute_swap_mock", mock_hash=mock_hash)
+            return mock_hash
 
         private_key = load_owner_private_key()
         deploy = build_contract_call_deploy(
@@ -62,9 +75,15 @@ class ChainExecutor:
         """
         Loguea la decisión on-chain vía log_action(action_type, params), firmado con la
         owner key. `params` incluye reasoning + deploy_hash serializados como JSON.
+
+        En mock mode (sin pycspr), solo loguea localmente.
         """
         params = _build_log_params(decision.reasoning, deploy_hash)
         log.info("chain.log_action", action=decision.action, deploy_hash=deploy_hash)
+
+        if not HAS_PYCSPR:
+            log.warning("chain.log_action_mock", action=decision.action, params_len=len(params))
+            return
 
         private_key = load_owner_private_key()
         deploy = build_contract_call_deploy(

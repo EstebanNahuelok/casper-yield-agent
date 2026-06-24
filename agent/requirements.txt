@@ -1,6 +1,9 @@
 # LLM
 groq>=0.11.0
 
+# Casper SDK
+pycspr>=1.0.0
+
 # MCP client (solo para Casper MCP local)
 mcp>=1.0.0
 httpx>=0.27.0
