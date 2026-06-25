@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { ArrowUpRight, Eye, Brain, Zap, FileText, Github, ExternalLink } from "lucide-react";
+import { ArrowUpRight, Eye, Brain, Zap, FileText, Github } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAgentWallet } from "../context/AgentWalletContext";
 import { WalletConnect } from "#components/WalletConnect";
 import { ProfileMenu } from "#components/ProfileOptions";
+import { useAgentStatus } from "#hooks/useAgentStatus";
+import { useAgentConfig } from "#hooks/useAgentConfig";
 
 type Lang = "en" | "es";
 
@@ -159,6 +161,8 @@ function LoopTicker({ labels }: { labels: string[] }) {
 export const LandingPage = () => {
     const { connected: walletConnected, address: walletAddress, connect, disconnect: disconnectWallet } = useAgentWallet();
     const navigate = useNavigate();
+    const { status } = useAgentStatus();
+    const config = useAgentConfig();
 
     const handleConnectAndRedirect = async () => {
         await connect();
@@ -167,12 +171,19 @@ export const LandingPage = () => {
 
     const [lang, setLang] = useState<Lang>("es");
     const t = dict[lang];
-    const [nextIn, setNextIn] = useState(300);
+    const [nextIn, setNextIn] = useState(config.check_interval_seconds);
 
     useEffect(() => {
-        const i = setInterval(() => setNextIn((n) => (n <= 0 ? 300 : n - 1)), 1000);
+        setNextIn(config.check_interval_seconds);
+    }, [config.check_interval_seconds]);
+
+    useEffect(() => {
+        const i = setInterval(
+            () => setNextIn((n) => (n <= 0 ? config.check_interval_seconds : n - 1)),
+            1000,
+        );
         return () => clearInterval(i);
-    }, []);
+    }, [config.check_interval_seconds]);
 
     const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
@@ -260,19 +271,29 @@ export const LandingPage = () => {
             <section className="mx-auto max-w-7xl px-6 py-12">
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                     <div className="neon-box p-6">
-                        <div className="text-4xl font-mono font-bold text-red-400">1,248</div>
+                        <div className="text-4xl font-mono font-bold text-red-400">
+                            {status?.actions_taken != null ? status.actions_taken.toLocaleString() : "—"}
+                        </div>
                         <div className="text-sm text-zinc-500 mt-1">{t.stats.decisions}</div>
                     </div>
                     <div className="neon-box p-6">
-                        <div className="text-4xl font-mono font-bold text-red-400">99.8%</div>
+                        <div className="text-4xl font-mono font-bold text-red-400">
+                            {status?.status === "running" ? "LIVE" : status?.status ?? "—"}
+                        </div>
                         <div className="text-sm text-zinc-500 mt-1">{t.stats.uptime}</div>
                     </div>
                     <div className="neon-box p-6">
-                        <div className="text-4xl font-mono font-bold text-red-400">+2.8%</div>
+                        <div className="text-4xl font-mono font-bold text-red-400">
+                            {status?.last_market_data?.pool_apy != null
+                                ? `+${(status.last_market_data.pool_apy - config.min_apy_delta).toFixed(1)}%`
+                                : "—"}
+                        </div>
                         <div className="text-sm text-zinc-500 mt-1">{t.stats.avgApy}</div>
                     </div>
                     <div className="neon-box p-6">
-                        <div className="text-4xl font-mono font-bold text-red-400">5m</div>
+                        <div className="text-4xl font-mono font-bold text-red-400">
+                            {Math.floor(config.check_interval_seconds / 60)}m
+                        </div>
                         <div className="text-sm text-zinc-500 mt-1">{t.stats.latency}</div>
                     </div>
                 </div>
@@ -282,17 +303,29 @@ export const LandingPage = () => {
             <section id="how" className="mx-auto max-w-7xl px-6 py-20">
                 <div className="text-center mb-12">
                     <h2 className="text-4xl font-bold neon-text-red">{t.howSub}</h2>
-                    <p className="text-zinc-400 mt-3">{t.howDesc}</p>
+                    <p className="text-zinc-400 mt-3">
+                        {lang === "en"
+                            ? `Every ${Math.floor(config.check_interval_seconds / 60)} minutes the agent runs this cycle without human intervention.`
+                            : `Cada ${Math.floor(config.check_interval_seconds / 60)} minutos el agente ejecuta este ciclo sin intervención humana.`}
+                    </p>
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-4">
-                    {t.steps.map((step, i) => (
-                        <div key={i} className="neon-box p-8 rounded-2xl border border-red-500/20 group">
-                            <div className="text-red-500 text-5xl font-mono mb-4 opacity-30 group-hover:opacity-100 transition">0{i + 1}</div>
-                            <h3 className="text-2xl font-bold mb-3">{step.t}</h3>
-                            <p className="text-zinc-400 leading-relaxed">{step.d}</p>
-                        </div>
-                    ))}
+                    {t.steps.map((step, i) => {
+                        // Replace hardcoded thresholds in the Decide step (index 1)
+                        const desc = i === 1
+                            ? (lang === "en"
+                                ? `Claude analyzes the conditions: if APY rises +${config.min_apy_delta}% and slippage < ${config.max_slippage_pct}%, the verdict is SWAP. Otherwise HOLD.`
+                                : `Claude analiza las condiciones: si el APY sube +${config.min_apy_delta}% y slippage < ${config.max_slippage_pct}%, el veredicto es SWAP. Si no, HOLD.`)
+                            : step.d;
+                        return (
+                            <div key={i} className="neon-box p-8 rounded-2xl border border-red-500/20 group">
+                                <div className="text-red-500 text-5xl font-mono mb-4 opacity-30 group-hover:opacity-100 transition">0{i + 1}</div>
+                                <h3 className="text-2xl font-bold mb-3">{step.t}</h3>
+                                <p className="text-zinc-400 leading-relaxed">{desc}</p>
+                            </div>
+                        );
+                    })}
                 </div>
             </section>
 

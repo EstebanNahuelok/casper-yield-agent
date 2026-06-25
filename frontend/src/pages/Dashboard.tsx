@@ -19,9 +19,6 @@ import {
 } from "lucide-react";
 import { useCasperTransaction } from "#hooks/useCasperTransaction";
 const EXPLORER = "https://testnet.cspr.live/deploy/";
-// Agent config mirrored from the Python agent for display purposes.
-const CHECK_INTERVAL_SECONDS = 900; // CHECK_INTERVAL
-const MIN_APY_DELTA = 2.0; // MIN_APY_DELTA (%)
 
 // ---------- i18n ----------
 
@@ -184,6 +181,7 @@ import { WalletConnect } from "#components/WalletConnect";
 import { ProfileMenu } from "#components/ProfileOptions";
 import { Link } from "react-router-dom";
 import { useAgentStatus } from "#hooks/useAgentStatus";
+import { useAgentConfig } from "#hooks/useAgentConfig";
 import { useAgentWallet } from "../context/AgentWalletContext";
 
 
@@ -558,6 +556,7 @@ export const Dashboard = () => {
     const { sendNativeTransfer } = useCasperTransaction();
     const [actionAmount, setActionAmount] = useState<string>("50"); // valor por defecto
     const { status, loading } = useAgentStatus();
+    const config = useAgentConfig();
 
     console.log(status);
     const [selectedPool, setSelectedPool] = useState<Pool | null>(null);
@@ -593,7 +592,6 @@ export const Dashboard = () => {
     // };
     const { connected: walletConnected, address: walletAddress, connect, disconnect: disconnectWallet } = useAgentWallet();
 
-    const [nextCycle, setNextCycle] = useState(42);
     const [lang, setLang] = useState<Lang>("en");
     const t = dict[lang];
     const agentState = agentIndicator(status, loading, t);
@@ -621,37 +619,46 @@ export const Dashboard = () => {
     }, [status?.decision_history]);
     const swapCount = decisionBars.filter((d: { action: string }) => d.action === "SWAP").length;
 
-    // NEXT CYCLE: time left until last_updated + CHECK_INTERVAL (900s).
+    // NEXT CYCLE: time left until last_updated + check_interval_seconds.
     const nextCycleLabel = useMemo(() => {
         if (!status?.last_updated) return "—";
         const last = new Date(status.last_updated).getTime();
         if (Number.isNaN(last)) return "—";
         const s = Math.max(
             0,
-            Math.floor((last + CHECK_INTERVAL_SECONDS * 1000 - Date.now()) / 1000),
+            Math.floor((last + config.check_interval_seconds * 1000 - Date.now()) / 1000),
         );
         return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-    }, [status?.last_updated]);
+    }, [status?.last_updated, config.check_interval_seconds]);
 
-    // APY threshold the agent acts on: current APY + MIN_APY_DELTA.
+    // APY threshold the agent acts on: current APY + min_apy_delta from config.
     const currentApy = status?.last_market_data?.current_apy ?? null;
     const poolApy = status?.last_market_data?.pool_apy ?? null;
-    const apyThreshold = currentApy != null ? currentApy + MIN_APY_DELTA : null;
+    const apyThreshold = currentApy != null ? currentApy + config.min_apy_delta : null;
     const apyBarPct =
         apyThreshold && apyThreshold > 0 && poolApy != null
             ? Math.min((poolApy / apyThreshold) * 100, 100)
             : 0;
 
-    // Opportunity Scanner: the only real pool (CSPR/sCSPR) with the live APY
-    // from /status (last_market_data.pool_apy).
+    // Opportunity Scanner: the only real pool (CSPR/sCSPR) with live data from /status.
     const scannerPools = useMemo(
         () =>
             pools.map((p) => ({
                 ...p,
                 apy: poolApy != null ? `${poolApy.toFixed(2)}%` : "—",
                 apyNum: poolApy ?? p.apyNum,
+                position: status?.balance_cspr != null
+                    ? `${status.balance_cspr.toLocaleString()} CSPR`
+                    : "—",
+                rewards24h: status?.last_decision?.action === "SWAP" && status.last_decision.amount_out != null
+                    ? `+${status.last_decision.amount_out.toFixed(4)} sCSPR`
+                    : "—",
+                fee: "0.3%",
+                tvl: "—",
+                status: status?.last_decision?.action === "SWAP" ? "Staked" : "Monitoring",
+                tone: (status?.last_decision?.action === "SWAP" ? "emerald" : "zinc") as Pool["tone"],
             })),
-        [poolApy],
+        [poolApy, status],
     );
     const decisions: Decision[] = useMemo(() => {
         if (status?.decision_history && status.decision_history.length > 0) {
@@ -727,14 +734,6 @@ export const Dashboard = () => {
             alert("❌ Error al enviar transacción:\n" + (error.message || error));
         }
     };
-    useEffect(() => {
-        const id = setInterval(() => {
-            setNextCycle((s) => (s <= 1 ? 60 : s - 1));
-        }, 1000);
-        return () => clearInterval(id);
-    }, []);
-
-
     return (
         <LangContext.Provider value={{ lang, t }}>
             <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans selection:bg-brand/30 pb-16">
@@ -793,8 +792,7 @@ export const Dashboard = () => {
                                     {t.nextCycle}
                                 </span>
                                 <span className="text-xs font-mono text-zinc-200 tabular-nums">
-                                    {String(Math.floor(nextCycle / 60)).padStart(2, "0")}:
-                                    {String(nextCycle % 60).padStart(2, "0")}
+                                    {nextCycleLabel}
                                 </span>
                             </div>
                         </div>
@@ -803,7 +801,7 @@ export const Dashboard = () => {
                                 <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium">
                                     {t.testnetNode}
                                 </span>
-                                <span className="text-xs font-mono text-zinc-300">casper-test-03</span>
+                                <span className="text-xs font-mono text-zinc-300">{config.casper_network}</span>
                             </div>
                             <div className="inline-flex items-center rounded-lg border border-zinc-800 bg-zinc-900/40 p-0.5">
                                 {(["en", "es"] as const).map((l) => (
@@ -853,7 +851,7 @@ export const Dashboard = () => {
                                         <span className="text-xl font-mono text-brand">CSPR</span>
                                     </div>
                                     <p className="mt-2 text-sm text-zinc-500 font-mono">
-                                        ≈ ${status?.balance_cspr ? (status.balance_cspr * 0.034).toFixed(2) : "0.00"} USD
+                                        ≈ ${status?.balance_cspr ? (status.balance_cspr * (status?.last_market_data?.cspr_price_usd ?? 0)).toFixed(2) : "0.00"} USD
                                     </p>
                                 </div>
                                 <RangePicker value={range} onChange={setRange} />
@@ -1149,7 +1147,7 @@ export const Dashboard = () => {
                                                         <span className="text-sm text-indigo-400">CSPR</span>
                                                     </div>
                                                     <div className="text-[10px] text-zinc-500 mt-0.5">
-                                                        ≈ ${status?.balance_cspr ? (status.balance_cspr * 0.034).toFixed(2) : "0.00"} USD
+                                                        ≈ ${status?.balance_cspr ? (status.balance_cspr * (status?.last_market_data?.cspr_price_usd ?? 0)).toFixed(2) : "0.00"} USD
                                                     </div>
                                                 </div>
                                                 <span className="text-[9px] px-2 py-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 uppercase tracking-widest">
