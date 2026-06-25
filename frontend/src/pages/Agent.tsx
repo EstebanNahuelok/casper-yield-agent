@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Check, Cpu, Shield, TrendingUp, Zap, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAgentConfig } from "#hooks/useAgentConfig";
 
 type Lang = "en" | "es";
 const dict = {
@@ -95,17 +96,25 @@ const presets: Record<Profile, { apy: number; slip: number; alloc: number; liq: 
 export const StrategyPage = () => {
   const [lang, setLang] = useState<Lang>("en");
   const t = dict[lang];
+  const agentConfig = useAgentConfig();
 
   const [profile, setProfile] = useState<Profile>("balanced");
   const [apy, setApy] = useState(presets.balanced.apy);
   const [slip, setSlip] = useState(presets.balanced.slip);
   const [alloc, setAlloc] = useState(presets.balanced.alloc);
   const [liq, setLiq] = useState(presets.balanced.liq);
-  const [cycle, setCycle] = useState(900); // Real cycle
+  const [cycle, setCycle] = useState(agentConfig.check_interval_seconds);
   const [autoCompound, setAutoCompound] = useState(true);
   const [autoExit, setAutoExit] = useState(false);
   const [blacklist, setBlacklist] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Sync sliders with real agent config on first load
+  useEffect(() => {
+    setApy(agentConfig.min_apy_delta);
+    setSlip(agentConfig.max_slippage_pct);
+    setCycle(agentConfig.check_interval_seconds);
+  }, [agentConfig.min_apy_delta, agentConfig.max_slippage_pct, agentConfig.check_interval_seconds]);
 
   const applyProfile = (p: Profile) => {
     setProfile(p);
@@ -113,7 +122,7 @@ export const StrategyPage = () => {
     setSlip(presets[p].slip);
     setAlloc(presets[p].alloc);
     setLiq(presets[p].liq);
-    setCycle(900);
+    setCycle(agentConfig.check_interval_seconds);
   };
 
   const save = () => {
@@ -121,7 +130,12 @@ export const StrategyPage = () => {
     setTimeout(() => setSaved(false), 2200);
   };
 
-  const reset = () => applyProfile("balanced");
+  const reset = () => {
+    applyProfile("balanced");
+    setApy(agentConfig.min_apy_delta);
+    setSlip(agentConfig.max_slippage_pct);
+    setCycle(agentConfig.check_interval_seconds);
+  };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans pb-16">
@@ -299,7 +313,7 @@ export const StrategyPage = () => {
               <p className="text-[11px] text-zinc-500 mb-5">{t.summaryDesc}</p>
 
               <div className="space-y-4 text-sm leading-relaxed text-zinc-300">
-                <p>{t.line1.replace("{apy}", apy.toString())}</p>
+                <p>{t.line1.replace("{apy}", apy.toString()).replace("900s", `${cycle}s`)}</p>
                 <p>
                   {t.line2.replace("{alloc}", alloc.toString()).replace("{slip}", slip.toString())}
                 </p>
@@ -314,7 +328,7 @@ export const StrategyPage = () => {
                 <Stat label="APY ≥" value={apy + "%"} />
                 <Stat label="Slip ≤" value={slip + "%"} />
                 <Stat label="Alloc ≤" value={alloc + "%"} />
-                <Stat label="Cycle" value="900s (real)" />
+                <Stat label="Cycle" value={`${cycle}s`} />
               </div>
             </div>
           </aside>
