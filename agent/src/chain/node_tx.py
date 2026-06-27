@@ -68,21 +68,28 @@ async def submit_contract_call(
         payload_json = json.dumps(payload)
 
         log.debug("node_tx.call", entry_point=entry_point, pkg=contract_package_hash[:16])
-        proc = await asyncio.create_subprocess_exec(
-            "node",
-            str(_NODE_SIGNER),
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await proc.communicate(input=payload_json.encode())
-        if stderr:
-            log.warning("node_tx.stderr", text=stderr.decode())
-        result = json.loads(stdout.decode().strip())
-        if "error" in result:
-            raise RuntimeError(f"node_signer error: {result['error']}")
-        tx_hash = result["tx_hash"]
-        log.info("node_tx.submitted", tx_hash=tx_hash, entry_point=entry_point)
-        return tx_hash
+        for attempt in range(3):
+            proc = await asyncio.create_subprocess_exec(
+                "node",
+                str(_NODE_SIGNER),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate(input=payload_json.encode())
+            if stderr:
+                log.warning("node_tx.stderr", text=stderr.decode())
+            result = json.loads(stdout.decode().strip())
+            if "error" in result:
+                err = result["error"]
+                if "429" in err and attempt < 2:
+                    delay = 10 * (attempt + 1)
+                    log.warning("node_tx.rate_limited", attempt=attempt + 1, retry_in=delay)
+                    await asyncio.sleep(delay)
+                    continue
+                raise RuntimeError(f"node_signer error: {err}")
+            tx_hash = result["tx_hash"]
+            log.info("node_tx.submitted", tx_hash=tx_hash, entry_point=entry_point)
+            return tx_hash
     finally:
         os.unlink(pem_path)

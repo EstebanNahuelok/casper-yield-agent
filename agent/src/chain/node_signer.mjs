@@ -50,15 +50,25 @@ async function main() {
   }
 
   const { contract_package_hash, entry_point, args: argDefs, pem_path, api_key, payment, chain } = input;
-  const RPC_HOST = chain === 'casper' ? 'node.mainnet.cspr.cloud' : 'node.testnet.cspr.cloud';
-  const RPC_URL  = `https://${RPC_HOST}/rpc`;
+  // Primary: CasperLabs public RPC (no rate limits). Fallback: cspr.cloud with API key.
+  const PUBLIC_RPC  = chain === 'casper'
+    ? 'https://rpc.mainnet.casperlabs.io'
+    : 'https://rpc.testnet.casperlabs.io';
+  const CLOUD_RPC   = chain === 'casper'
+    ? 'https://node.mainnet.cspr.cloud/rpc'
+    : 'https://node.testnet.cspr.cloud/rpc';
+
+  async function tryPutTransaction(tx, rpcUrl, extraHeaders = {}) {
+    const handler = new HttpHandler(rpcUrl);
+    if (Object.keys(extraHeaders).length) handler.setCustomHeaders(extraHeaders);
+    const rpc = new RpcClient(handler);
+    const put = await rpc.putTransaction(tx);
+    return put.transactionHash?.toHex?.() ?? String(put.transactionHash);
+  }
 
   try {
     const pem        = readFileSync(pem_path, 'utf-8');
     const privateKey = PrivateKey.fromPem(pem, KeyAlgorithm.ED25519);
-    const handler    = new HttpHandler(RPC_URL);
-    handler.setCustomHeaders({ Authorization: api_key });
-    const rpc = new RpcClient(handler);
 
     // Build runtime args: each entry is [name, type, value]
     const argsMap = {};
@@ -82,8 +92,13 @@ async function main() {
       .build();
     tx.sign(privateKey);
 
-    const put    = await rpc.putTransaction(tx);
-    const txHash = put.transactionHash?.toHex?.() ?? String(put.transactionHash);
+    let txHash;
+    try {
+      txHash = await tryPutTransaction(tx, PUBLIC_RPC);
+    } catch (publicErr) {
+      process.stderr.write(`[node_signer] public RPC failed (${publicErr.message}), trying cspr.cloud\n`);
+      txHash = await tryPutTransaction(tx, CLOUD_RPC, { Authorization: api_key });
+    }
     console.log(JSON.stringify({ tx_hash: txHash }));
   } catch (e) {
     // Log full error details for debugging

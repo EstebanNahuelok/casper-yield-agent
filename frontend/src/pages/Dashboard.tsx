@@ -2,9 +2,10 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
     Area,
     AreaChart,
+    Bar,
+    BarChart,
     CartesianGrid,
-    Line,
-    LineChart,
+    Cell,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -31,8 +32,9 @@ const dict = {
         connectWallet: "Connect wallet",
         totalVaultBalance: "{t.totalVaultBalance}",
         rangeChange: "Change",
-        activePositions: "Active Positions",
+        monitoredPools: "Monitored pools",
         totalDeploys: "Total Deploys",
+        executedSwaps: "Executed swaps",
         agentStrategy: "Agent Strategy",
         apyThreshold: "APY Threshold",
         strategyDesc:
@@ -68,6 +70,12 @@ const dict = {
         inputs: "Inputs",
         reasoningTrace: "Reasoning trace",
         viewExplorer: "View on explorer",
+        agentMinorIssue: "The agent encountered a minor issue. Retrying...",
+        agentConnecting: "Connecting...",
+        agentOffline: "Offline",
+        lastCycle: "Last cycle",
+        agentActivity: "Agent activity · last decisions",
+        noDecisionsYet: "No decisions recorded yet",
     },
     es: {
         agentActive: "Agente activo",
@@ -76,8 +84,9 @@ const dict = {
         connectWallet: "Conectar wallet",
         totalVaultBalance: "Balance total del vault",
         rangeChange: "Variación",
-        activePositions: "Posiciones activas",
+        monitoredPools: "Pools monitoreados",
         totalDeploys: "Despliegues totales",
+        executedSwaps: "Swaps ejecutados",
         agentStrategy: "Estrategia del agente",
         apyThreshold: "Umbral de APY",
         strategyDesc:
@@ -113,12 +122,49 @@ const dict = {
         inputs: "Entradas",
         reasoningTrace: "Traza de razonamiento",
         viewExplorer: "Ver en el explorer",
+        agentMinorIssue: "El agente encontró un problema menor. Reintentando...",
+        agentConnecting: "Conectando...",
+        agentOffline: "Desconectado",
+        lastCycle: "Último ciclo",
+        agentActivity: "Actividad del agente · últimas decisiones",
+        noDecisionsYet: "Sin decisiones registradas todavía",
     },
 } as const;
 
 type Dict = { [K in keyof typeof dict.en]: string };
 const LangContext = createContext<{ lang: Lang; t: Dict }>({ lang: "en", t: dict.en });
 const useT = () => useContext(LangContext).t;
+
+// Map the real agent status into a label + colors. Initial load shows
+// "connecting"; a missing/unknown status or no response falls back to offline.
+function agentIndicator(
+    status: any,
+    loading: boolean,
+    t: Dict,
+): { label: string; dot: string; text: string } {
+    const state = loading ? "connecting" : status?.status ?? "stopped";
+    switch (state) {
+        case "running":
+            return { label: t.agentActive, dot: "bg-emerald-500", text: "text-emerald-500/80" };
+        case "connecting":
+            return { label: t.agentConnecting, dot: "bg-amber-500", text: "text-amber-400/80" };
+        default:
+            return { label: t.agentOffline, dot: "bg-red-500", text: "text-red-500/80" };
+    }
+}
+
+// Compact relative time, e.g. "hace 5s" / "5s ago".
+function timeAgo(iso: string, lang: Lang): string {
+    const then = new Date(iso).getTime();
+    if (Number.isNaN(then)) return "—";
+    const s = Math.max(0, Math.floor((Date.now() - then) / 1000));
+    let val = s;
+    let unit = "s";
+    if (s >= 86400) { val = Math.floor(s / 86400); unit = "d"; }
+    else if (s >= 3600) { val = Math.floor(s / 3600); unit = "h"; }
+    else if (s >= 60) { val = Math.floor(s / 60); unit = "m"; }
+    return lang === "es" ? `hace ${val}${unit}` : `${val}${unit} ago`;
+}
 import {
     Sheet,
     SheetContent,
@@ -135,6 +181,7 @@ import { WalletConnect } from "#components/WalletConnect";
 import { ProfileMenu } from "#components/ProfileOptions";
 import { Link } from "react-router-dom";
 import { useAgentStatus } from "#hooks/useAgentStatus";
+import { useAgentConfig } from "#hooks/useAgentConfig";
 import { useAgentWallet } from "../context/AgentWalletContext";
 
 
@@ -181,7 +228,7 @@ type Decision = {
     title: string;
     text: string;
     tone: "brand" | "emerald" | "zinc";
-    status: "Success" | "Pending" | "Observation";
+    status: "HOLD" | "SWAP" | "SWAP ON-CHAIN";
     inputs: { label: string; value: string }[];
     reasoning: string[];
 };
@@ -191,32 +238,6 @@ type Decision = {
 // Trend data generators
 const RANGES = ["1H", "24H", "7D", "30D"] as const;
 type Range = (typeof RANGES)[number];
-
-function buildSeries(range: Range) {
-    const points = range === "1H" ? 12 : range === "24H" ? 24 : range === "7D" ? 28 : 30;
-    const base = 1_180_000;
-    const data = [];
-    for (let i = 0; i < points; i++) {
-        const drift = Math.sin(i / 2.4) * 18000 + Math.cos(i / 1.7) * 9000;
-        const growth = (i / points) * 60000;
-        const noise = (Math.sin(i * 7.13) + Math.cos(i * 3.11)) * 4000;
-        data.push({
-            idx: i,
-            label:
-                range === "1H"
-                    ? `${(i * 5).toString().padStart(2, "0")}m`
-                    : range === "24H"
-                        ? `${i.toString().padStart(2, "0")}h`
-                        : range === "7D"
-                            ? `D${Math.floor(i / 4) + 1}`
-                            : `D${i + 1}`,
-            balance: Math.round(base + drift + growth + noise),
-            gas: Math.max(0.6, 1.1 + Math.sin(i / 2) * 0.35 + Math.cos(i / 5) * 0.12),
-            latency: Math.round(38 + Math.sin(i / 3) * 9 + Math.cos(i / 1.4) * 4),
-        });
-    }
-    return data;
-}
 
 // ---------- components ----------
 
@@ -266,6 +287,28 @@ function ChartTooltip({ active, payload, label, unit }: any) {
                     </span>
                 </div>
             ))}
+        </div>
+    );
+}
+
+function DecisionBarTooltip({ active, payload }: any) {
+    if (!active || !payload?.length) return null;
+    const d = payload[0].payload;
+    const isSwap = d.action === "SWAP";
+    return (
+        <div className="rounded-md border border-zinc-800 bg-zinc-950/95 px-3 py-2 text-[11px] font-mono shadow-xl max-w-[220px]">
+            <div className="flex items-center gap-2 mb-1">
+                <span
+                    className="size-1.5 rounded-full"
+                    style={{ background: isSwap ? "#10b981" : "#71717a" }}
+                />
+                <span className={isSwap ? "text-emerald-400" : "text-zinc-300"}>{d.action}</span>
+                <span className="text-zinc-600">·</span>
+                <span className="text-zinc-500">{d.label}</span>
+            </div>
+            {d.reasoning && (
+                <div className="text-zinc-400 leading-relaxed whitespace-normal">{d.reasoning}</div>
+            )}
         </div>
     );
 }
@@ -427,9 +470,9 @@ function DecisionRow({ d }: { d: Decision }) {
                 ? "text-emerald-500/70"
                 : "text-zinc-500";
     const statusMap = {
-        Success: "bg-emerald-500/10 text-emerald-500",
-        Pending: "bg-brand/10 text-brand",
-        Observation: "bg-zinc-800 text-zinc-400",
+        "SWAP ON-CHAIN": "bg-emerald-500/10 text-emerald-500",
+        SWAP: "bg-brand/10 text-brand",
+        HOLD: "bg-zinc-800 text-zinc-400",
     } as const;
 
     return (
@@ -513,11 +556,11 @@ export const Dashboard = () => {
     const { sendNativeTransfer } = useCasperTransaction();
     const [actionAmount, setActionAmount] = useState<string>("50"); // valor por defecto
     const { status, loading } = useAgentStatus();
+    const config = useAgentConfig();
 
     console.log(status);
     const [selectedPool, setSelectedPool] = useState<Pool | null>(null);
     const [range, setRange] = useState<Range>("24H");
-    const series = useMemo(() => buildSeries(range), [range]);
     const [slide, setSlide] = useState(0);
     // const [walletConnected, setWalletConnected] = useState(false);
     // const [walletAddress, setWalletAddress] = useState("");
@@ -549,9 +592,74 @@ export const Dashboard = () => {
     // };
     const { connected: walletConnected, address: walletAddress, connect, disconnect: disconnectWallet } = useAgentWallet();
 
-    const [nextCycle, setNextCycle] = useState(42);
     const [lang, setLang] = useState<Lang>("en");
     const t = dict[lang];
+    const agentState = agentIndicator(status, loading, t);
+
+    // Last 10 agent decisions as bars (oldest → newest), colored by action.
+    // Real data from decision_history; replaces the empty balance chart.
+    const decisionBars = useMemo(() => {
+        const history = status?.decision_history ?? [];
+        return history
+            .slice(0, 10)
+            .reverse()
+            .map((d: any) => {
+                const action = d.action === "SWAP" ? "SWAP" : "HOLD";
+                const ts = d.timestamp ? new Date(d.timestamp) : null;
+                return {
+                    label: ts && !Number.isNaN(ts.getTime())
+                        ? ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                        : "—",
+                    action,
+                    reasoning: d.reasoning || "",
+                    // Height encodes the action category (SWAP taller than HOLD).
+                    value: action === "SWAP" ? 1 : 0.45,
+                };
+            });
+    }, [status?.decision_history]);
+    const swapCount = decisionBars.filter((d: { action: string }) => d.action === "SWAP").length;
+
+    // NEXT CYCLE: time left until last_updated + check_interval_seconds.
+    const nextCycleLabel = useMemo(() => {
+        if (!status?.last_updated) return "—";
+        const last = new Date(status.last_updated).getTime();
+        if (Number.isNaN(last)) return "—";
+        const s = Math.max(
+            0,
+            Math.floor((last + config.check_interval_seconds * 1000 - Date.now()) / 1000),
+        );
+        return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+    }, [status?.last_updated, config.check_interval_seconds]);
+
+    // APY threshold the agent acts on: current APY + min_apy_delta from config.
+    const currentApy = status?.last_market_data?.current_apy ?? null;
+    const poolApy = status?.last_market_data?.pool_apy ?? null;
+    const apyThreshold = currentApy != null ? currentApy + config.min_apy_delta : null;
+    const apyBarPct =
+        apyThreshold && apyThreshold > 0 && poolApy != null
+            ? Math.min((poolApy / apyThreshold) * 100, 100)
+            : 0;
+
+    // Opportunity Scanner: the only real pool (CSPR/sCSPR) with live data from /status.
+    const scannerPools = useMemo(
+        () =>
+            pools.map((p) => ({
+                ...p,
+                apy: poolApy != null ? `${poolApy.toFixed(2)}%` : "—",
+                apyNum: poolApy ?? p.apyNum,
+                position: status?.balance_cspr != null
+                    ? `${status.balance_cspr.toLocaleString()} CSPR`
+                    : "—",
+                rewards24h: status?.last_decision?.action === "SWAP" && status.last_decision.amount_out != null
+                    ? `+${status.last_decision.amount_out.toFixed(4)} sCSPR`
+                    : "—",
+                fee: "0.3%",
+                tvl: "—",
+                status: status?.last_decision?.action === "SWAP" ? "Staked" : "Monitoring",
+                tone: (status?.last_decision?.action === "SWAP" ? "emerald" : "zinc") as Pool["tone"],
+            })),
+        [poolApy, status],
+    );
     const decisions: Decision[] = useMemo(() => {
         if (status?.decision_history && status.decision_history.length > 0) {
             return status.decision_history.slice(0, 5).map((d: any, index: number) => ({
@@ -562,7 +670,9 @@ export const Dashboard = () => {
                 title: d.action || "HOLD",
                 text: d.reasoning || "Decisión del agente",
                 tone: (d.action === "HOLD" ? "zinc" : "brand") as Decision["tone"],
-                status: (d.deploy_hash ? "Success" : "Observation") as Decision["status"],
+                status: (d.action === "SWAP"
+                    ? (d.deploy_hash ? "SWAP ON-CHAIN" : "SWAP")
+                    : "HOLD") as Decision["status"],
                 inputs: [
                     { label: "Action", value: d.action || "HOLD" },
                     { label: "Timestamp", value: new Date(d.timestamp).toLocaleTimeString() },
@@ -578,7 +688,7 @@ export const Dashboard = () => {
             title: "HOLD",
             text: "El agente está monitoreando el mercado.",
             tone: "zinc" as Decision["tone"],
-            status: "Observation" as Decision["status"],
+            status: "HOLD" as Decision["status"],
             inputs: [],
             reasoning: ["Esperando señal de APY superior al umbral."],
         }];
@@ -621,17 +731,9 @@ export const Dashboard = () => {
 
         } catch (error: any) {
             console.error("Transaction error:", error);
-            alert("❌ Error al enviar transacción:\n" + (error.message || error));
+            alert("❌ No se pudo enviar la transacción. Verificá tu wallet e intentá de nuevo.");
         }
     };
-    useEffect(() => {
-        const id = setInterval(() => {
-            setNextCycle((s) => (s <= 1 ? 60 : s - 1));
-        }, 1000);
-        return () => clearInterval(id);
-    }, []);
-
-
     return (
         <LangContext.Provider value={{ lang, t }}>
             <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans selection:bg-brand/30 pb-16">
@@ -675,18 +777,22 @@ export const Dashboard = () => {
                             </div>
                             <div className="h-4 w-px bg-zinc-800 mx-2" />
                             <div className="flex items-center gap-2">
-                                <div className="size-2 rounded-full bg-emerald-500 animate-pulse-soft" />
-                                <span className="text-xs font-mono uppercase tracking-wider text-emerald-500/80">
-                                    {t.agentActive}
+                                <div className={`size-2 rounded-full ${agentState.dot} animate-pulse-soft`} />
+                                <span className={`text-xs font-mono uppercase tracking-wider ${agentState.text}`}>
+                                    {agentState.label}
                                 </span>
+                                {status?.last_updated && (
+                                    <span className="text-[10px] font-mono text-zinc-500">
+                                        · {t.lastCycle} {timeAgo(status.last_updated, lang)}
+                                    </span>
+                                )}
                             </div>
                             <div className="hidden md:flex items-center gap-2 pl-3 ml-1 border-l border-zinc-800">
                                 <span className="text-[10px] uppercase tracking-widest text-zinc-500">
                                     {t.nextCycle}
                                 </span>
                                 <span className="text-xs font-mono text-zinc-200 tabular-nums">
-                                    {String(Math.floor(nextCycle / 60)).padStart(2, "0")}:
-                                    {String(nextCycle % 60).padStart(2, "0")}
+                                    {nextCycleLabel}
                                 </span>
                             </div>
                         </div>
@@ -695,7 +801,7 @@ export const Dashboard = () => {
                                 <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium">
                                     {t.testnetNode}
                                 </span>
-                                <span className="text-xs font-mono text-zinc-300">casper-test-03</span>
+                                <span className="text-xs font-mono text-zinc-300">{config.casper_network}</span>
                             </div>
                             <div className="inline-flex items-center rounded-lg border border-zinc-800 bg-zinc-900/40 p-0.5">
                                 {(["en", "es"] as const).map((l) => (
@@ -731,11 +837,11 @@ export const Dashboard = () => {
                     <h1 className="sr-only">Casper Autopilot Dashboard</h1>
 
                     {/* Hero */}
-                    <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                        <div className="md:col-span-2 p-6 rounded-xl bg-zinc-900/50 border border-zinc-800 flex flex-col justify-between">
+                    <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div className="md:col-span-2 p-5 rounded-xl bg-zinc-900/50 border border-zinc-800 flex flex-col justify-between">
                             <div className="flex items-start justify-between gap-4">
                                 <div>
-                                    <h2 className="text-xs font-medium uppercase tracking-widest text-zinc-500 mb-4">
+                                    <h2 className="text-xs font-medium uppercase tracking-widest text-zinc-500 mb-3">
                                         Total Vault Balance
                                     </h2>
                                     <div className="flex items-baseline gap-3">
@@ -745,57 +851,70 @@ export const Dashboard = () => {
                                         <span className="text-xl font-mono text-brand">CSPR</span>
                                     </div>
                                     <p className="mt-2 text-sm text-zinc-500 font-mono">
-                                        ≈ ${status?.balance_cspr ? (status.balance_cspr * 0.034).toFixed(2) : "0.00"} USD
+                                        ≈ ${status?.balance_cspr ? (status.balance_cspr * (status?.last_market_data?.cspr_price_usd ?? 0)).toFixed(2) : "0.00"} USD
                                     </p>
                                 </div>
                                 <RangePicker value={range} onChange={setRange} />
                             </div>
 
-                            <div className="mt-6 h-40">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={series} margin={{ top: 10, right: 4, left: -16, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="bal" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#ff2d2d" stopOpacity={0.45} />
-                                                <stop offset="100%" stopColor="#ff2d2d" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid stroke="#18181b" vertical={false} />
-                                        <XAxis
-                                            dataKey="label"
-                                            stroke="#52525b"
-                                            tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            interval="preserveStartEnd"
-                                        />
-                                        <YAxis
-                                            stroke="#52525b"
-                                            tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                                            width={48}
-                                        />
-                                        <Tooltip content={<ChartTooltip unit=" CSPR" />} cursor={{ stroke: "#3f3f46" }} />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="balance"
-                                            stroke="#ff2d2d"
-                                            strokeWidth={1.8}
-                                            fill="url(#bal)"
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
+                            <div className="mt-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] uppercase tracking-widest text-zinc-500">
+                                        {t.agentActivity}
+                                    </span>
+                                    {decisionBars.length > 0 && (
+                                        <div className="flex items-center gap-3 text-[10px] font-mono">
+                                            <span className="flex items-center gap-1 text-emerald-400">
+                                                <span className="size-1.5 rounded-full bg-emerald-500" /> {swapCount} SWAP
+                                            </span>
+                                            <span className="flex items-center gap-1 text-zinc-400">
+                                                <span className="size-1.5 rounded-full bg-zinc-600" /> {decisionBars.length - swapCount} HOLD
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="h-32">
+                                    {decisionBars.length === 0 ? (
+                                        <div className="h-full flex items-center justify-center rounded-lg border border-dashed border-zinc-800 text-xs font-mono text-zinc-600">
+                                            {t.noDecisionsYet}
+                                        </div>
+                                    ) : (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={decisionBars} margin={{ top: 10, right: 4, left: -28, bottom: 0 }}>
+                                                <CartesianGrid stroke="#18181b" vertical={false} />
+                                                <XAxis
+                                                    dataKey="label"
+                                                    stroke="#52525b"
+                                                    tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    interval="preserveStartEnd"
+                                                />
+                                                <YAxis hide domain={[0, 1]} />
+                                                <Tooltip content={<DecisionBarTooltip />} cursor={{ fill: "#ffffff08" }} />
+                                                <Bar dataKey="value" radius={[3, 3, 0, 0]} maxBarSize={28}>
+                                                    {decisionBars.map(
+                                                        (d: { action: string }, i: number) => (
+                                                            <Cell
+                                                                key={i}
+                                                                fill={d.action === "SWAP" ? "#10b981" : "#3f3f46"}
+                                                            />
+                                                        ),
+                                                    )}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    )}
+                                </div>
                             </div>
 
-                            <div className="mt-4 flex gap-8 border-t border-zinc-800 pt-5">
+                            <div className="mt-3 flex gap-8 border-t border-zinc-800 pt-4">
                                 <div>
                                     <span className="block text-[10px] uppercase text-zinc-500 mb-1">{range} {t.rangeChange}</span>
-                                    <span className="text-sm font-mono text-emerald-400">+0.0%</span>
+                                    <span className="text-sm font-mono text-zinc-400">--</span>
                                 </div>
                                 <div>
-                                    <span className="block text-[10px] uppercase text-zinc-500 mb-1">{t.activePositions}</span>
+                                    <span className="block text-[10px] uppercase text-zinc-500 mb-1">{t.monitoredPools}</span>
                                     <span className="text-sm font-mono text-zinc-200">1</span>
                                 </div>
                                 <div>
@@ -827,10 +946,10 @@ export const Dashboard = () => {
                                     style={{ transform: `translateX(-${slide * 100}%)` }}
                                 >
                                     {/* SLIDE 0 — Agent Status */}
-                                    <div className="min-w-full p-6 rounded-xl bg-red-500/5 border border-red-500/40 shadow-[0_0_20px_rgba(255,45,45,0.25)]">
+                                    <div className="min-w-full p-4 rounded-xl bg-red-500/5 border border-red-500/40 shadow-[0_0_20px_rgba(255,45,45,0.25)]">
 
                                         {/* Agent active pill */}
-                                        <div className="flex items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/5 p-4 mb-5">
+                                        <div className="flex items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/5 p-3 mb-4">
                                             <Bot
                                                 className="size-10 text-green-400"
                                                 style={{ filter: "drop-shadow(0 0 6px #22c55e) drop-shadow(0 0 12px #22c55e)" }}
@@ -852,22 +971,22 @@ export const Dashboard = () => {
 
                                         {/* Title */}
                                         <h2
-                                            className="text-xs font-medium uppercase tracking-widest text-red-400 mb-4"
+                                            className="text-xs font-medium uppercase tracking-widest text-red-400 mb-3"
                                             style={{ textShadow: "0 0 5px #ff2d2d, 0 0 10px #ff2d2d" }}
                                         >
                                             {t.agentStrategy}
                                         </h2>
 
                                         {/* Stats grid */}
-                                        <div className="grid grid-cols-2 gap-2 mb-4">
+                                        <div className="grid grid-cols-2 gap-2 mb-3">
                                             {[
                                                 {
                                                     label: "Balance",
-                                                    value: status?.balance_cspr != null ? `${status.balance_cspr.toLocaleString()} CSPR` : "—",
+                                                    value: status?.last_market_data?.balance_cspr != null ? `${status.last_market_data.balance_cspr.toLocaleString()} CSPR` : "—",
                                                     color: "text-zinc-200",
                                                 },
                                                 {
-                                                    label: t.totalDeploys,
+                                                    label: t.executedSwaps,
                                                     value: status?.actions_taken != null ? String(status.actions_taken) : "—",
                                                     color: "text-zinc-200",
                                                 },
@@ -878,7 +997,7 @@ export const Dashboard = () => {
                                                 },
                                                 {
                                                     label: t.nextCycle,
-                                                    value: `${String(Math.floor(nextCycle / 60)).padStart(2, "0")}:${String(nextCycle % 60).padStart(2, "0")}`,
+                                                    value: nextCycleLabel,
                                                     color: "text-red-400",
                                                 },
                                             ].map(({ label, value, color }) => (
@@ -896,19 +1015,15 @@ export const Dashboard = () => {
                                                 className="text-sm font-mono text-red-400"
                                                 style={{ textShadow: "0 0 5px #ff2d2d, 0 0 10px #ff2d2d" }}
                                             >
-                                                &gt;12.5%
+                                                {apyThreshold != null ? `>${apyThreshold.toFixed(2)}%` : "—"}
                                             </span>
                                         </div>
 
-                                        {/* Progress bar — current APY vs threshold */}
+                                        {/* Progress bar — pool APY vs threshold (current APY + MIN_APY_DELTA) */}
                                         <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden mb-1">
                                             <div
                                                 className="h-full bg-green-400 rounded-full transition-all duration-500"
-                                                style={{
-                                                    width: status?.last_market_data?.pool_apy
-                                                        ? `${Math.min((status.last_market_data.pool_apy / 25) * 100, 100).toFixed(0)}%`
-                                                        : "0%",
-                                                }}
+                                                style={{ width: `${apyBarPct.toFixed(0)}%` }}
                                             />
                                         </div>
                                         <div className="text-[10px] text-zinc-600 text-right font-mono mb-3">
@@ -917,7 +1032,7 @@ export const Dashboard = () => {
 
                                         {/* Last decision box */}
                                         {status?.last_decision && (
-                                            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 mb-4">
+                                            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 mb-3">
                                                 <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Last decision</div>
                                                 <div className="flex items-center justify-between mb-1.5">
                                                     <span className="text-xs font-mono font-semibold text-zinc-100">
@@ -978,42 +1093,35 @@ export const Dashboard = () => {
                                             </div>
                                         )}
 
-                                        {/* Errors */}
-                                        {status?.errors?.length > 0 && (
-                                            <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 mb-4">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <div className="text-[9px] uppercase tracking-widest text-red-400">
-                                                        Errors ({status.errors.length})
-                                                    </div>
-                                                    <div className="size-1.5 rounded-full bg-red-500 animate-pulse" />
-                                                </div>
-                                                <div className="max-h-16 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-red-500/20 scrollbar-track-transparent pr-1">
-                                                    {status.errors.map((e: string, i: number) => (
-                                                        <p
-                                                            key={i}
-                                                            className="text-[10px] text-red-300/70 font-mono leading-relaxed truncate"
-                                                            title={e}
-                                                        >
-                                                            › {e.length > 48 ? e.slice(0, 48) + "…" : e}
+                                        {/* Agent issues — never surface raw technical errors.
+                                            Hidden while the agent runs normally; otherwise a
+                                            generic, user-friendly message. */}
+                                        {status?.status !== "running" &&
+                                            status?.errors?.length > 0 && (
+                                                <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 mb-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                                        <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                                                            {t.agentMinorIssue}
                                                         </p>
-                                                    ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
 
-                                        {/* Button */}
-                                        <button
-                                            className="w-full py-2 px-3 rounded-lg text-sm font-semibold text-white border border-red-500/60 bg-red-500/10 hover:bg-red-500/20 transition-all shadow-[0_0_15px_rgba(255,45,45,0.35)]"
+                                        {/* Button → navigates to the strategy/agent page */}
+                                        <Link
+                                            to="/agent"
+                                            className="block w-full text-center py-2 px-3 rounded-lg text-sm font-semibold text-white border border-red-500/60 bg-red-500/10 hover:bg-red-500/20 transition-all shadow-[0_0_15px_rgba(255,45,45,0.35)]"
                                             style={{ textShadow: "0 0 5px #ff2d2d, 0 0 10px #ff2d2d" }}
                                         >
                                             {t.updateStrategy}
-                                        </button>
+                                        </Link>
                                     </div>
 
                                     {/* SLIDE 1 — Vault Actions */}
-                                    <div className="min-w-full p-6 rounded-xl bg-indigo-500/5 border border-indigo-500/30">
+                                    <div className="min-w-full p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/30">
                                         {/* Balance */}
-                                        <div className="flex items-center gap-3 mb-5">
+                                        <div className="flex items-center gap-3 mb-4">
                                             <div className="size-10 rounded-lg bg-indigo-500/10 border border-indigo-500/25 grid place-items-center">
                                                 <Vault className="size-5 text-indigo-400" />
                                             </div>
@@ -1028,8 +1136,7 @@ export const Dashboard = () => {
                                         </div>
 
                                         {/* Balance box */}
-                                        {/* Balance box */}
-                                        <div className="rounded-lg border border-indigo-500/15 bg-indigo-500/5 p-3 mb-4">
+                                        <div className="rounded-lg border border-indigo-500/15 bg-indigo-500/5 p-3 mb-3">
                                             <div className="flex justify-between items-start mb-2">
                                                 <div>
                                                     <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1">
@@ -1040,7 +1147,7 @@ export const Dashboard = () => {
                                                         <span className="text-sm text-indigo-400">CSPR</span>
                                                     </div>
                                                     <div className="text-[10px] text-zinc-500 mt-0.5">
-                                                        ≈ ${status?.balance_cspr ? (status.balance_cspr * 0.034).toFixed(2) : "0.00"} USD
+                                                        ≈ ${status?.balance_cspr ? (status.balance_cspr * (status?.last_market_data?.cspr_price_usd ?? 0)).toFixed(2) : "0.00"} USD
                                                     </div>
                                                 </div>
                                                 <span className="text-[9px] px-2 py-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 uppercase tracking-widest">
@@ -1049,21 +1156,7 @@ export const Dashboard = () => {
                                             </div>
                                         </div>
 
-                                        {/* Stats */}
-                                        <div className="grid grid-cols-3 gap-1.5 mb-4">
-                                            {[
-                                                { l: "Staked", v: "184,200", c: "text-emerald-400" },
-                                                { l: "Rewards 24h", v: "+42.18", c: "text-emerald-400" },
-                                                { l: "Gas price", v: "1.2 gwei", c: "text-zinc-200" },
-                                            ].map(({ l, v, c }) => (
-                                                <div key={l} className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2 text-center">
-                                                    <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1">{l}</div>
-                                                    <div className={`text-xs font-mono ${c}`}>{v}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className="space-y-4">
+                                        <div className="space-y-3">
                                             {/* Amount Input */}
                                             <div>
                                                 <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1">Amount (CSPR)</div>
@@ -1071,23 +1164,22 @@ export const Dashboard = () => {
                                                     type="number"
                                                     value={actionAmount}
                                                     onChange={(e) => setActionAmount(e.target.value)}
-                                                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-zinc-100 focus:border-indigo-500 outline-none text-lg font-mono"
+                                                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-zinc-100 focus:border-indigo-500 outline-none text-lg font-mono"
                                                     placeholder="50.0"
                                                 />
                                             </div>
 
-                                            {/* Action Buttons */}
-                                            <div className="grid grid-cols-2 gap-3">
+                                            {/* Action Buttons — only real YieldVault entry points */}
+                                            <div className="grid grid-cols-3 gap-3">
                                                 {[
                                                     { label: "Deposit", action: "deposit", color: "indigo" },
                                                     { label: "Withdraw", action: "withdraw", color: "zinc" },
-                                                    { label: "Stake", action: "stake", color: "emerald" },
                                                     { label: "Swap", action: "swap", color: "brand" },
                                                 ].map(({ label, action, color }) => (
                                                     <button
                                                         key={action}
                                                         onClick={() => executeAction(action)}
-                                                        className={`py-3 px-4 rounded-xl border text-sm font-semibold transition-all hover:scale-[1.02] ${color === "indigo"
+                                                        className={`py-2.5 px-4 rounded-xl border text-sm font-semibold transition-all hover:scale-[1.02] ${color === "indigo"
                                                             ? "border-indigo-500 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20"
                                                             : color === "emerald"
                                                                 ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
@@ -1103,7 +1195,7 @@ export const Dashboard = () => {
 
                                             <button
                                                 onClick={() => executeAction("execute")}
-                                                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-indigo-500/50 bg-indigo-500/10 text-indigo-400 font-semibold text-base hover:bg-indigo-500/20 transition-all"
+                                                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-indigo-500/50 bg-indigo-500/10 text-indigo-400 font-semibold text-base hover:bg-indigo-500/20 transition-all"
                                             >
                                                 <Send size={18} />
                                                 Execute Transaction
@@ -1131,96 +1223,6 @@ export const Dashboard = () => {
                         </div>
                     </section>
 
-                    {/* On-chain telemetry trends */}
-                    <section className="mb-12">
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 className="text-sm font-medium text-zinc-100">{t.onchainTelemetry}</h3>
-                                <p className="text-[10px] font-mono text-zinc-500 mt-0.5">
-                                    {t.telemetrySub} · {range} {t.window}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="rounded-xl border border-zinc-900 bg-zinc-900/30 p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-[10px] uppercase tracking-widest text-zinc-500">
-                                        {t.gasPrice}
-                                    </span>
-                                    <span className="text-xs font-mono text-zinc-200">1.2 gwei</span>
-                                </div>
-                                <div className="h-28">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={series} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
-                                            <CartesianGrid stroke="#18181b" vertical={false} />
-                                            <XAxis
-                                                dataKey="label"
-                                                stroke="#52525b"
-                                                tick={{ fontSize: 9, fontFamily: "JetBrains Mono" }}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                interval="preserveStartEnd"
-                                            />
-                                            <YAxis
-                                                stroke="#52525b"
-                                                tick={{ fontSize: 9, fontFamily: "JetBrains Mono" }}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                width={36}
-                                            />
-                                            <Tooltip content={<ChartTooltip unit=" gwei" />} cursor={{ stroke: "#3f3f46" }} />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="gas"
-                                                stroke="#10b981"
-                                                strokeWidth={1.5}
-                                                dot={false}
-                                            />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-
-                            <div className="rounded-xl border border-zinc-900 bg-zinc-900/30 p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-[10px] uppercase tracking-widest text-zinc-500">
-                                        {t.nodeLatency}
-                                    </span>
-                                    <span className="text-xs font-mono text-zinc-200">42 ms</span>
-                                </div>
-                                <div className="h-28">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={series} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
-                                            <CartesianGrid stroke="#18181b" vertical={false} />
-                                            <XAxis
-                                                dataKey="label"
-                                                stroke="#52525b"
-                                                tick={{ fontSize: 9, fontFamily: "JetBrains Mono" }}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                interval="preserveStartEnd"
-                                            />
-                                            <YAxis
-                                                stroke="#52525b"
-                                                tick={{ fontSize: 9, fontFamily: "JetBrains Mono" }}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                width={36}
-                                            />
-                                            <Tooltip content={<ChartTooltip unit=" ms" />} cursor={{ stroke: "#3f3f46" }} />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="latency"
-                                                stroke="#ff2d2d"
-                                                strokeWidth={1.5}
-                                                dot={false}
-                                            />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
 
                     {/* Scanner + Decisions */}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -1243,7 +1245,7 @@ export const Dashboard = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-zinc-900/50">
-                                        {pools.map((p) => (
+                                        {scannerPools.map((p) => (
                                             <tr
                                                 key={p.pair}
                                                 onClick={() => setSelectedPool(p)}
@@ -1292,9 +1294,12 @@ export const Dashboard = () => {
                                 ))}
                             </div>
 
-                            <button className="w-full mt-10 py-3 border border-zinc-900 text-xs font-medium uppercase tracking-widest text-zinc-500 rounded-lg hover:text-zinc-300 hover:border-zinc-700 transition-colors">
+                            <Link
+                                to="/audit"
+                                className="block w-full text-center mt-10 py-3 border border-zinc-900 text-xs font-medium uppercase tracking-widest text-zinc-500 rounded-lg hover:text-zinc-300 hover:border-zinc-700 transition-colors"
+                            >
                                 {t.viewAudit}
-                            </button>
+                            </Link>
                         </div>
                     </div>
                 </main>
