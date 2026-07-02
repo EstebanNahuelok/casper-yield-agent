@@ -556,6 +556,7 @@ function DecisionRow({ d }: { d: Decision }) {
 export const Dashboard = () => {
     const { sendNativeTransfer } = useCasperTransaction();
     const [actionAmount, setActionAmount] = useState<string>("50"); // valor por defecto
+    const [selectedAction, setSelectedAction] = useState<string>("deposit");
     const { status, loading } = useAgentStatus();
     const config = useAgentConfig();
 
@@ -1197,13 +1198,17 @@ export const Dashboard = () => {
                                                 ].map(({ label, action, color }) => (
                                                     <button
                                                         key={action}
-                                                        onClick={() => executeAction(action)}
-                                                        className={`py-2.5 px-4 rounded-xl border text-sm font-semibold transition-all hover:scale-[1.02] ${color === "indigo"
-                                                            ? "border-indigo-500 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20"
-                                                            : color === "emerald"
-                                                                ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                                                        onClick={() => setSelectedAction(action)}
+                                                        className={`py-2.5 px-4 rounded-xl border text-sm font-semibold transition-all hover:scale-[1.02] ${selectedAction === action
+                                                            ? color === "indigo"
+                                                                ? "border-indigo-500 bg-indigo-500/30 text-indigo-300"
                                                                 : color === "brand"
-                                                                    ? "border-brand bg-brand/10 text-brand hover:bg-brand/20"
+                                                                    ? "border-brand bg-brand/30 text-white"
+                                                                    : "border-zinc-500 bg-zinc-700 text-zinc-200"
+                                                            : color === "indigo"
+                                                                ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20"
+                                                                : color === "brand"
+                                                                    ? "border-brand/40 bg-brand/10 text-brand hover:bg-brand/20"
                                                                     : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800"
                                                             }`}
                                                     >
@@ -1213,7 +1218,7 @@ export const Dashboard = () => {
                                             </div>
 
                                             <button
-                                                onClick={() => executeAction("execute")}
+                                                onClick={() => executeAction(selectedAction)}
                                                 className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-indigo-500/50 bg-indigo-500/10 text-indigo-400 font-semibold text-base hover:bg-indigo-500/20 transition-all"
                                             >
                                                 <Send size={18} />
