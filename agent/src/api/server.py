@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -65,6 +65,6 @@ async def health() -> HealthResponse:
     state = await state_store.get()
     return HealthResponse(
         ok=True,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         agent_status=state.status,
     )

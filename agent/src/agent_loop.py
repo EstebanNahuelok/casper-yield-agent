@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 import structlog
 
@@ -85,7 +85,7 @@ async def _collect_market_data(
         pool_apy=pool_apy,
         estimated_slippage=slippage,
         cspr_price_usd=cspr_price_usd,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
     )
 
 

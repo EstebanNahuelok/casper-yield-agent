@@ -619,16 +619,19 @@ export const Dashboard = () => {
     }, [status?.decision_history]);
     const swapCount = decisionBars.filter((d: { action: string }) => d.action === "SWAP").length;
 
-    // NEXT CYCLE: time left until last_updated + check_interval_seconds.
-    const nextCycleLabel = useMemo(() => {
-        if (!status?.last_updated) return "—";
-        const last = new Date(status.last_updated).getTime();
-        if (Number.isNaN(last)) return "—";
-        const s = Math.max(
-            0,
-            Math.floor((last + config.check_interval_seconds * 1000 - Date.now()) / 1000),
-        );
-        return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+    // NEXT CYCLE: live countdown that ticks every second.
+    const [nextCycleLabel, setNextCycleLabel] = useState("—");
+    useEffect(() => {
+        const calc = () => {
+            if (!status?.last_updated) { setNextCycleLabel("—"); return; }
+            const last = new Date(status.last_updated).getTime();
+            if (Number.isNaN(last)) { setNextCycleLabel("—"); return; }
+            const s = Math.max(0, Math.floor((last + config.check_interval_seconds * 1000 - Date.now()) / 1000));
+            setNextCycleLabel(`${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`);
+        };
+        calc();
+        const id = setInterval(calc, 1000);
+        return () => clearInterval(id);
     }, [status?.last_updated, config.check_interval_seconds]);
 
     // APY threshold the agent acts on: current APY + min_apy_delta from config.
