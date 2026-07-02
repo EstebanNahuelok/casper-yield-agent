@@ -14,7 +14,7 @@ app = FastAPI(title="Casper Yield Agent API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # en prod restringir al dominio del frontend
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
