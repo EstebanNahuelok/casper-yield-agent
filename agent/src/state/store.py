@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .models import AgentState, AgentVote, Decision, DecisionHistoryEntry, MarketData, SwarmResult
 
@@ -16,13 +16,13 @@ class StateStore:
     async def update_status(self, status: str) -> None:
         async with self._lock:
             self._state.status = status
-            self._state.last_updated = datetime.utcnow()
+            self._state.last_updated = datetime.now(timezone.utc)
 
     async def update_market_data(self, data: MarketData) -> None:
         async with self._lock:
             self._state.last_market_data = data
             self._state.balance_cspr = data.balance_cspr
-            self._state.last_updated = datetime.utcnow()
+            self._state.last_updated = datetime.now(timezone.utc)
 
     async def record_decision(
         self,
@@ -37,7 +37,7 @@ class StateStore:
                 self._state.actions_taken += 1
 
             entry = DecisionHistoryEntry(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 action=decision.action,
                 reasoning=decision.reasoning,
                 deploy_hash=tx_hash,
@@ -57,14 +57,14 @@ class StateStore:
                     vote_tally=tally,
                 )
 
-            self._state.last_updated = datetime.utcnow()
+            self._state.last_updated = datetime.now(timezone.utc)
 
     async def record_error(self, error: str) -> None:
         async with self._lock:
             self._state.errors.append(error)
             # Mantener solo los últimos 20 errores
             self._state.errors = self._state.errors[-20:]
-            self._state.last_updated = datetime.utcnow()
+            self._state.last_updated = datetime.now(timezone.utc)
 
 
 # Singleton compartido entre el loop y la API

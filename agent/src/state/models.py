@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -45,7 +45,7 @@ class MarketData(BaseModel):
     pool_apy: float
     estimated_slippage: float
     cspr_price_usd: float
-    timestamp: datetime = datetime.utcnow()
+    timestamp: datetime = datetime.now(timezone.utc)
 
 
 class AgentState(BaseModel):
@@ -56,6 +56,6 @@ class AgentState(BaseModel):
     balance_cspr: float = 0.0
     actions_taken: int = 0
     last_tx_hash: Optional[str] = None
-    last_updated: datetime = datetime.utcnow()
+    last_updated: datetime = datetime.now(timezone.utc)
     errors: list[str] = []
     last_swarm_result: Optional[SwarmResult] = None

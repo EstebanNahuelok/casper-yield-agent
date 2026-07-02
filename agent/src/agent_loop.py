@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 import structlog
 
@@ -85,7 +85,7 @@ async def _collect_market_data(
         pool_apy=pool_apy,
         estimated_slippage=slippage,
         cspr_price_usd=cspr_price_usd,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
     )
 
 
@@ -102,6 +102,12 @@ async def _run_cycle(
     # 1. Observar
     await state_store.update_status("observing")
     market = await _collect_market_data(casper, trade)
+
+    if market.balance_cspr == 0.0:
+        log.warning("agent.skip_cycle", reason="balance=0.0 (RPC fallido), reintentando en el próximo ciclo")
+        await state_store.record_error("Balance no disponible (RPC error) — ciclo saltado")
+        return
+
     await state_store.update_market_data(market)
     log.info(
         "agent.market_data",
@@ -130,7 +136,10 @@ async def _run_cycle(
         log.info("agent.swap_done", deploy_hash=deploy_hash)
 
     # 4. Loguear on-chain siempre (auditable por el jurado)
-    await executor.log_action(decision, deploy_hash)
+    try:
+        await executor.log_action(decision, deploy_hash)
+    except Exception as log_exc:
+        log.warning("agent.log_action_failed", error=str(log_exc))
 
     # 5. Actualizar estado para el frontend
     await state_store.record_decision(decision, deploy_hash, swarm_votes=votes)

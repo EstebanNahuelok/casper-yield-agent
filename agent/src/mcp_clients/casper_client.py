@@ -45,6 +45,7 @@ class CasperMCPClient:
     def __init__(self):
         self._session: ClientSession | None = None
         self._stack: AsyncExitStack | None = None
+        self._cached_balance: float | None = None
 
     @property
     def is_connected(self) -> bool:
@@ -125,58 +126,73 @@ class CasperMCPClient:
           1. state_get_item(contract_hash) → named_keys → __contract_main_purse URef
           2. query_balance(purse_uref) → motes (U512 string)
 
-        Returns CSPR float (motes / 1e9). Returns 0.0 on any RPC error.
+        Returns CSPR float (motes / 1e9). On 429 rate-limit, returns last known balance.
+        Returns 0.0 only if no prior successful read exists.
         """
-        rpc_url = f"https://node.{settings.casper_network}.cspr.cloud/rpc"
-        auth_headers = {
-            "Authorization": settings.cspr_cloud_api_key,
-            "Content-Type": "application/json",
-        }
+        # Intentar primero con nodo público (sin rate limit), luego cspr.cloud como fallback
+        rpc_candidates = [
+            ("https://rpc.testnet.casperlabs.io", {"Content-Type": "application/json"}, 10.0),
+            (
+                f"https://node.{settings.casper_network}.cspr.cloud/rpc",
+                {"Authorization": settings.cspr_cloud_api_key, "Content-Type": "application/json"},
+                15.0,
+            ),
+        ]
 
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as http:
-                # 1. State root hash
-                r = await http.post(rpc_url, headers=auth_headers, json={
-                    "jsonrpc": "2.0", "method": "chain_get_state_root_hash",
-                    "params": {}, "id": 1,
-                })
-                r.raise_for_status()
-                state_root = r.json()["result"]["state_root_hash"]
+        for rpc_url, auth_headers, timeout in rpc_candidates:
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as http:
+                    # 1. State root hash
+                    r = await http.post(rpc_url, headers=auth_headers, json={
+                        "jsonrpc": "2.0", "method": "chain_get_state_root_hash",
+                        "params": {}, "id": 1,
+                    })
+                    r.raise_for_status()
+                    state_root = r.json()["result"]["state_root_hash"]
 
-                # 2. Contract entity → __contract_main_purse URef
-                r = await http.post(rpc_url, headers=auth_headers, json={
-                    "jsonrpc": "2.0", "method": "state_get_item",
-                    "params": {
-                        "state_root_hash": state_root,
-                        "key": settings.vault_contract_hash,
-                        "path": [],
-                    }, "id": 2,
-                })
-                r.raise_for_status()
-                named_keys_raw = (
-                    r.json()
-                    .get("result", {})
-                    .get("stored_value", {})
-                    .get("Contract", {})
-                    .get("named_keys", [])
-                )
-                named_keys = {nk["name"]: nk["key"] for nk in named_keys_raw}
-                purse_uref = named_keys.get("__contract_main_purse")
-                if not purse_uref:
-                    log.warning("vault_rpc.no_main_purse", keys=list(named_keys.keys()))
-                    return 0.0
+                    # 2. Contract entity → __contract_main_purse URef
+                    r = await http.post(rpc_url, headers=auth_headers, json={
+                        "jsonrpc": "2.0", "method": "state_get_item",
+                        "params": {
+                            "state_root_hash": state_root,
+                            "key": settings.vault_contract_hash,
+                            "path": [],
+                        }, "id": 2,
+                    })
+                    r.raise_for_status()
+                    named_keys_raw = (
+                        r.json()
+                        .get("result", {})
+                        .get("stored_value", {})
+                        .get("Contract", {})
+                        .get("named_keys", [])
+                    )
+                    named_keys = {nk["name"]: nk["key"] for nk in named_keys_raw}
+                    purse_uref = named_keys.get("__contract_main_purse")
+                    if not purse_uref:
+                        log.warning("vault_rpc.no_main_purse", keys=list(named_keys.keys()))
+                        return 0.0
 
-                # 3. Purse balance via Casper 2.x query_balance
-                r = await http.post(rpc_url, headers=auth_headers, json={
-                    "jsonrpc": "2.0", "method": "query_balance",
-                    "params": {"purse_identifier": {"purse_uref": purse_uref}},
-                    "id": 3,
-                })
-                r.raise_for_status()
-                motes = int(r.json()["result"]["balance"])
-                log.info("vault_rpc.balance", motes=motes, cspr=motes / 1_000_000_000)
-                return motes / 1_000_000_000
+                    # 3. Purse balance via Casper 2.x query_balance
+                    r = await http.post(rpc_url, headers=auth_headers, json={
+                        "jsonrpc": "2.0", "method": "query_balance",
+                        "params": {"purse_identifier": {"purse_uref": purse_uref}},
+                        "id": 3,
+                    })
+                    r.raise_for_status()
+                    motes = int(r.json()["result"]["balance"])
+                    balance = motes / 1_000_000_000
+                    self._cached_balance = balance
+                    log.info("vault_rpc.balance", motes=motes, cspr=balance, rpc=rpc_url[:30])
+                    return balance
 
-        except Exception as exc:
-            log.warning("vault_rpc.failed", error=str(exc), exc_info=True)
-            return 0.0
+            except Exception as exc:
+                log.warning("vault_rpc.node_failed", rpc=rpc_url[:30], error=repr(exc)[:120])
+                continue
+
+        # Todos los nodos fallaron — usar cache si existe
+        if self._cached_balance is not None:
+            log.warning("vault_rpc.all_nodes_failed_using_cache", cached_cspr=self._cached_balance)
+            return self._cached_balance
+        log.warning("vault_rpc.all_nodes_failed", fallback=0.0)
+        return 0.0

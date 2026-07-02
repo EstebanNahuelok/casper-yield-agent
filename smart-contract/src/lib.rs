@@ -4,6 +4,7 @@ extern crate alloc;
 
 pub mod errors;
 pub mod events;
+pub mod pool;
 pub mod types;
 pub mod vault;
 

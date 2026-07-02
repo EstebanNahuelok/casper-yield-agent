@@ -1,5 +1,6 @@
 use odra::prelude::*;
 use odra::casper_types::U512;
+use odra::CallDef;
 
 use crate::errors::VaultError;
 use crate::events::{
@@ -25,6 +26,8 @@ pub struct YieldVault {
     actions: Mapping<u64, ActionEntry>,
     swap_count: Var<u64>,
     swaps: Mapping<u64, SwapRecord>,
+    pool_address: Var<Address>,
+    scspr_balance: Var<U512>,
 }
 
 #[odra::module]
@@ -152,8 +155,10 @@ impl YieldVault {
         });
     }
 
-    /// Registra un swap ejecutado por el agente.
-    /// Solo el agente puede llamar esta función.
+    /// Executes a swap via the configured SimplePool AMM.
+    /// If pool_address is set, sends CSPR from the vault purse to the pool and receives
+    /// sCSPR back (x*y=k with 0.3% fee). Updates total_locked and scspr_balance.
+    /// If pool_address is not set, records the swap as an audit log only (no fund movement).
     pub fn execute_swap(
         &mut self,
         token_in: String,
@@ -185,6 +190,40 @@ impl YieldVault {
             self.revert(VaultError::ActionLimitReached);
         }
 
+        // If pool is configured, execute a real on-chain swap.
+        let actual_amount_out = if let Some(pool_addr) = self.pool_address.get() {
+            // Build cross-contract call to pool.swap_cspr_for_scspr with CSPR attached.
+            let mut args = odra::casper_types::RuntimeArgs::new();
+            args.insert("min_amount_out", U512::zero()).unwrap_or_revert(self);
+            args.insert("recipient", self.env().self_address()).unwrap_or_revert(self);
+
+            let call_def = CallDef::new("swap_cspr_for_scspr", true, args)
+                .with_amount(amount_in);
+
+            let returned: U512 = self.env().call_contract(pool_addr, call_def);
+
+            // Update CSPR accounting: vault purse lost amount_in (transferred to pool).
+            let new_total = self
+                .total_locked
+                .get_or_default()
+                .checked_sub(amount_in)
+                .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
+            self.total_locked.set(new_total);
+
+            // Track sCSPR received from pool.
+            let new_scspr = self
+                .scspr_balance
+                .get_or_default()
+                .checked_add(returned)
+                .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
+            self.scspr_balance.set(new_scspr);
+
+            returned
+        } else {
+            // No pool configured: audit-log only, no fund movement.
+            amount_out
+        };
+
         let caller = self.env().caller();
         let timestamp = self.env().get_block_time();
 
@@ -193,7 +232,7 @@ impl YieldVault {
             token_in: token_in.clone(),
             token_out: token_out.clone(),
             amount_in,
-            amount_out,
+            amount_out: actual_amount_out,
             agent: caller,
             timestamp,
         };
@@ -206,7 +245,7 @@ impl YieldVault {
             token_in,
             token_out,
             amount_in,
-            amount_out,
+            amount_out: actual_amount_out,
             timestamp,
         });
     }
@@ -249,6 +288,14 @@ impl YieldVault {
 
     pub fn get_total_locked(&self) -> U512 {
         self.total_locked.get_or_default()
+    }
+
+    pub fn get_scspr_balance(&self) -> U512 {
+        self.scspr_balance.get_or_default()
+    }
+
+    pub fn get_pool_address(&self) -> Option<Address> {
+        self.pool_address.get()
     }
 
     pub fn get_owner(&self) -> Address {
@@ -306,6 +353,13 @@ impl YieldVault {
             new_agent,
             updated_by: caller,
         });
+    }
+
+    /// Configures the SimplePool AMM address used by execute_swap. Owner only.
+    /// Pass the contract hash address of a deployed SimplePool contract.
+    pub fn set_pool(&mut self, pool: Address) {
+        self.require_owner();
+        self.pool_address.set(pool);
     }
 
     /// Transfiere el ownership a una nueva dirección. Solo el owner actual puede llamar.
