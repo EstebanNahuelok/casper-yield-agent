@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from ..chain.executor import ChainExecutor
 from ..config import settings
 from ..state.models import AgentState
 from ..state.store import state_store
@@ -68,3 +69,29 @@ async def health() -> HealthResponse:
         timestamp=datetime.now(timezone.utc),
         agent_status=state.status,
     )
+
+
+class DepositRequest(BaseModel):
+    amount_cspr: float
+
+
+class DepositResponse(BaseModel):
+    ok: bool
+    deploy_hash: str | None = None
+    error: str | None = None
+
+
+@app.post("/deposit", response_model=DepositResponse)
+async def deposit_funds(req: DepositRequest) -> DepositResponse:
+    """
+    Deposita CSPR en el vault. Llama al entry point payable deposit()
+    vía pycspr + proxy WASM (soporta transferred_value que el SDK JS no soporta).
+    """
+    if req.amount_cspr <= 0:
+        return DepositResponse(ok=False, error="El monto debe ser mayor a 0")
+    try:
+        executor = ChainExecutor()
+        deploy_hash = await executor.deposit(req.amount_cspr)
+        return DepositResponse(ok=True, deploy_hash=deploy_hash)
+    except Exception as exc:
+        return DepositResponse(ok=False, error=str(exc))

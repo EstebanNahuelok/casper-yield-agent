@@ -18,6 +18,7 @@ import {
     Send,
 } from "lucide-react";
 import { useCasperTransaction } from "#hooks/useCasperTransaction";
+import { agenteApi } from "../api/agentApi";
 const EXPLORER = "https://testnet.cspr.live/deploy/";
 
 // ---------- i18n ----------
@@ -697,14 +698,31 @@ export const Dashboard = () => {
         }];
     }, [status]);
     const executeAction = async (actionType: string) => {
-        if (!walletConnected || !walletAddress) {
-            alert("Conecta tu wallet primero");
-            return;
-        }
-
         const amount = parseFloat(actionAmount);
         if (!amount || amount <= 0) {
             alert("Ingresa un monto válido mayor a 0");
+            return;
+        }
+
+        if (actionType === "deposit") {
+            try {
+                const res = await agenteApi.post("/deposit", { amount_cspr: amount });
+                if (res.data.ok) {
+                    const hash = res.data.deploy_hash;
+                    alert(`✅ Depósito enviado: ${amount} CSPR\n\nHash: ${hash}\n\nEspera ~2 min para que se confirme en la blockchain.`);
+                    window.open(`${EXPLORER}${hash}`, "_blank");
+                } else {
+                    alert(`❌ Error al depositar: ${res.data.error}`);
+                }
+            } catch (error: any) {
+                console.error("Deposit error:", error);
+                alert("❌ No se pudo conectar con el agente. ¿Está corriendo?");
+            }
+            return;
+        }
+
+        if (!walletConnected || !walletAddress) {
+            alert("Conecta tu wallet primero");
             return;
         }
 
@@ -722,14 +740,12 @@ export const Dashboard = () => {
 
             const deployHash = await sendNativeTransfer(
                 walletAddress,
-                walletAddress,        // ← Transfer a ti mismo (seguro para pruebas)
+                walletAddress,
                 amountMotes,
                 walletProvider
             );
 
-            alert(`✅ Transacción enviada exitosamente!\n\nHash:\n${deployHash}`);
-
-            // Abrir explorer
+            alert(`✅ Transacción enviada!\n\nHash:\n${deployHash}`);
             window.open(`${EXPLORER}${deployHash}`, "_blank");
 
         } catch (error: any) {
