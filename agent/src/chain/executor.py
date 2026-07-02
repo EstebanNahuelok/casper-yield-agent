@@ -120,8 +120,9 @@ class ChainExecutor:
             output = stdout.decode()
             err = stderr.decode()
             if err:
-                log.warning("chain.deposit.stderr", text=err[:500])
-            log.info("chain.deposit.output", text=output[:500])
+                log.warning("chain.deposit.stderr", text=err)
+            if output:
+                log.info("chain.deposit.stdout", text=output)
 
             if proc.returncode != 0:
                 raise RuntimeError(f"deposit_py falló (exit {proc.returncode}): {err}")

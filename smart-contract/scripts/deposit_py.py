@@ -86,7 +86,7 @@ def _patch_requests_auth(token: str) -> None:
         return _original_post(url, headers=headers, **kwargs)
 
     _req.post = _post_with_auth
-    print(f"[deposit] Auth lista → {CSPR_CLOUD_RPC}")
+    print(f"[deposit] Auth lista -> {CSPR_CLOUD_RPC}")
 
 
 # ── Key ────────────────────────────────────────────────────────────────────────
