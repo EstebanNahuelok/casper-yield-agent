@@ -35,6 +35,8 @@ class StateStore:
             if tx_hash:
                 self._state.last_tx_hash = tx_hash
                 self._state.actions_taken += 1
+                if decision.amount_out:
+                    self._state.scspr_balance_cspr += decision.amount_out
 
             entry = DecisionHistoryEntry(
                 timestamp=datetime.now(timezone.utc),

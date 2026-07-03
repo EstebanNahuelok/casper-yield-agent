@@ -653,7 +653,7 @@ export const Dashboard = () => {
                 apy: poolApy != null ? `${poolApy.toFixed(2)}%` : "—",
                 apyNum: poolApy ?? p.apyNum,
                 position: status?.balance_cspr != null
-                    ? `${status.balance_cspr.toLocaleString()} CSPR`
+                    ? `${status.balance_cspr.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} CSPR`
                     : "—",
                 rewards24h: status?.last_decision?.action === "SWAP" && status.last_decision.amount_out != null
                     ? `+${status.last_decision.amount_out.toFixed(4)} sCSPR`
@@ -710,7 +710,7 @@ export const Dashboard = () => {
                 const res = await agenteApi.post("/deposit", { amount_cspr: amount });
                 if (res.data.ok) {
                     const hash = res.data.deploy_hash;
-                    alert(`✅ Depósito enviado: ${amount} CSPR\n\nHash: ${hash}\n\nEspera ~2 min para que se confirme en la blockchain.`);
+                    alert(`✅ Depósito enviado: ${amount} CSPR\n\nHash: ${hash}\n\nEl deploy tarda ~2 min en confirmarse. El balance del vault se actualizará en el próximo ciclo del agente.`);
                     window.open(`${EXPLORER}${hash}`, "_blank");
                 } else {
                     alert(`❌ Error al depositar: ${res.data.error}`);
@@ -866,58 +866,78 @@ export const Dashboard = () => {
                                     </h2>
                                     <div className="flex items-baseline gap-3">
                                         <span className="text-5xl font-medium text-zinc-100 tracking-tight leading-none tabular-nums">
-                                            {status?.balance_cspr ? status.balance_cspr.toLocaleString() : "0"}
+                                            {status?.balance_cspr ? status.balance_cspr.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 3 }) : "0"}
                                         </span>
                                         <span className="text-xl font-mono text-brand">CSPR</span>
                                     </div>
                                     <p className="mt-2 text-sm text-zinc-500 font-mono">
                                         ≈ ${status?.balance_cspr ? (status.balance_cspr * (status?.last_market_data?.cspr_price_usd ?? 0)).toFixed(2) : "0.00"} USD
                                     </p>
+                                    {status?.scspr_balance_cspr != null && status.scspr_balance_cspr > 0 && (
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <span className="text-xs font-mono text-emerald-400">
+                                                + {status.scspr_balance_cspr.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} sCSPR
+                                            </span>
+                                            <span className="text-[10px] text-zinc-600 font-mono">staked in pool</span>
+                                        </div>
+                                    )}
                                 </div>
                                 <RangePicker value={range} onChange={setRange} />
                             </div>
 
                             <div className="mt-4">
-                                <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center justify-between mb-3">
                                     <span className="text-[10px] uppercase tracking-widest text-zinc-500">
                                         {t.agentActivity}
                                     </span>
                                     {decisionBars.length > 0 && (
-                                        <div className="flex items-center gap-3 text-[10px] font-mono">
-                                            <span className="flex items-center gap-1 text-emerald-400">
-                                                <span className="size-1.5 rounded-full bg-emerald-500" /> {swapCount} SWAP
+                                        <div className="flex items-center gap-4 text-[11px] font-mono">
+                                            <span className="flex items-center gap-1.5 text-emerald-400">
+                                                <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981]" />
+                                                {swapCount} SWAP
                                             </span>
-                                            <span className="flex items-center gap-1 text-zinc-400">
-                                                <span className="size-1.5 rounded-full bg-zinc-600" /> {decisionBars.length - swapCount} HOLD
+                                            <span className="flex items-center gap-1.5 text-zinc-400">
+                                                <span className="size-2 rounded-full bg-zinc-600" />
+                                                {decisionBars.length - swapCount} HOLD
                                             </span>
                                         </div>
                                     )}
                                 </div>
-                                <div className="h-32">
+                                <div className="h-48">
                                     {decisionBars.length === 0 ? (
                                         <div className="h-full flex items-center justify-center rounded-lg border border-dashed border-zinc-800 text-xs font-mono text-zinc-600">
                                             {t.noDecisionsYet}
                                         </div>
                                     ) : (
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={decisionBars} margin={{ top: 10, right: 4, left: -28, bottom: 0 }}>
-                                                <CartesianGrid stroke="#18181b" vertical={false} />
+                                            <BarChart data={decisionBars} margin={{ top: 12, right: 4, left: -24, bottom: 4 }}>
+                                                <defs>
+                                                    <linearGradient id="swapGrad" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.9} />
+                                                        <stop offset="100%" stopColor="#059669" stopOpacity={0.6} />
+                                                    </linearGradient>
+                                                    <linearGradient id="holdGrad" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="#52525b" stopOpacity={0.7} />
+                                                        <stop offset="100%" stopColor="#3f3f46" stopOpacity={0.4} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid stroke="#27272a" vertical={false} strokeDasharray="3 3" />
                                                 <XAxis
                                                     dataKey="label"
                                                     stroke="#52525b"
-                                                    tick={{ fontSize: 10, fontFamily: "JetBrains Mono" }}
+                                                    tick={{ fontSize: 10, fontFamily: "monospace", fill: "#71717a" }}
                                                     tickLine={false}
                                                     axisLine={false}
                                                     interval="preserveStartEnd"
                                                 />
-                                                <YAxis hide domain={[0, 1]} />
-                                                <Tooltip content={<DecisionBarTooltip />} cursor={{ fill: "#ffffff08" }} />
-                                                <Bar dataKey="value" radius={[3, 3, 0, 0]} maxBarSize={28}>
+                                                <YAxis hide domain={[0, 1.2]} />
+                                                <Tooltip content={<DecisionBarTooltip />} cursor={{ fill: "#ffffff06", radius: 4 }} />
+                                                <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={36}>
                                                     {decisionBars.map(
                                                         (d: { action: string }, i: number) => (
                                                             <Cell
                                                                 key={i}
-                                                                fill={d.action === "SWAP" ? "#10b981" : "#3f3f46"}
+                                                                fill={d.action === "SWAP" ? "url(#swapGrad)" : "url(#holdGrad)"}
                                                             />
                                                         ),
                                                     )}
@@ -1002,7 +1022,7 @@ export const Dashboard = () => {
                                             {[
                                                 {
                                                     label: "Balance",
-                                                    value: status?.last_market_data?.balance_cspr != null ? `${status.last_market_data.balance_cspr.toLocaleString()} CSPR` : "—",
+                                                    value: status?.last_market_data?.balance_cspr != null ? `${status.last_market_data.balance_cspr.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} CSPR` : "—",
                                                     color: "text-zinc-200",
                                                 },
                                                 {
@@ -1163,12 +1183,20 @@ export const Dashboard = () => {
                                                         Total vault balance
                                                     </div>
                                                     <div className="text-xl font-mono text-zinc-100">
-                                                        {status?.balance_cspr ? status.balance_cspr.toLocaleString() : "0"}{" "}
+                                                        {status?.balance_cspr ? status.balance_cspr.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 3 }) : "0"}{" "}
                                                         <span className="text-sm text-indigo-400">CSPR</span>
                                                     </div>
                                                     <div className="text-[10px] text-zinc-500 mt-0.5">
                                                         ≈ ${status?.balance_cspr ? (status.balance_cspr * (status?.last_market_data?.cspr_price_usd ?? 0)).toFixed(2) : "0.00"} USD
                                                     </div>
+                                                    {status?.scspr_balance_cspr != null && status.scspr_balance_cspr > 0 && (
+                                                        <div className="mt-2 flex items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2 py-1">
+                                                            <span className="text-[10px] text-zinc-500">sCSPR staked:</span>
+                                                            <span className="text-[11px] font-mono text-emerald-400">
+                                                                {status.scspr_balance_cspr.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <span className="text-[9px] px-2 py-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 uppercase tracking-widest">
                                                     Testnet
@@ -1347,7 +1375,7 @@ export const Dashboard = () => {
                             <span>
                                 BALANCE:{" "}
                                 <span className="text-zinc-400">
-                                    {status?.balance_cspr != null ? `${status.balance_cspr.toLocaleString()} CSPR` : "—"}
+                                    {status?.balance_cspr != null ? `${status.balance_cspr.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} CSPR` : "—"}
                                 </span>
                             </span>
                         </div>

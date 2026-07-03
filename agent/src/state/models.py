@@ -54,6 +54,7 @@ class AgentState(BaseModel):
     last_market_data: Optional[MarketData] = None
     decision_history: list[DecisionHistoryEntry] = []
     balance_cspr: float = 0.0
+    scspr_balance_cspr: float = 0.0
     actions_taken: int = 0
     last_tx_hash: Optional[str] = None
     last_updated: datetime = datetime.now(timezone.utc)

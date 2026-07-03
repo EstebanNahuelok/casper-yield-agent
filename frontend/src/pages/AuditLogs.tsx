@@ -100,15 +100,10 @@ export const AuditPage = () => {
     return `${rate}%`;
   }, [entries, status]);
 
-  // Avg Gas (if available)
+  // Avg Gas — siempre 10 CSPR por deploy (GAS_PAYMENT_MOTES fijo en pycspr_signer.py)
   const avgGas = useMemo(() => {
-    const validGas = entries
-      .filter(e => e.gas !== "—" && !isNaN(parseFloat(e.gas)))
-      .map(e => parseFloat(e.gas));
-    
-    if (validGas.length === 0) return "—";
-    const avg = (validGas.reduce((a, b) => a + b, 0) / validGas.length).toFixed(0);
-    return `${avg} motes`;
+    const onChainCount = entries.filter(e => e.hash !== "—" && e.hash.length > 10).length;
+    return onChainCount > 0 ? "10 CSPR" : "—";
   }, [entries]);
 
   const filtered = useMemo(() => {
