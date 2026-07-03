@@ -89,6 +89,7 @@ async function main() {
       .runtimeArgs(Args.fromMap(argsMap))
       .chainName(chain ?? 'casper-test')
       .payment(payment ?? 10_000_000_000)
+      .ttl(1800000)
       .build();
     tx.sign(privateKey);
 

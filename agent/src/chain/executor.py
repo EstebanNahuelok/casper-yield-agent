@@ -6,10 +6,11 @@ import tempfile
 from pathlib import Path
 
 import structlog
+from pycspr.types.cl import CLV_String, CLV_U512
 
 from ..config import settings
 from ..state.models import Decision
-from .node_tx import submit_contract_call
+from .pycspr_signer import build_contract_call_deploy, load_owner_private_key, submit_deploy
 
 log = structlog.get_logger()
 
@@ -47,12 +48,12 @@ def _build_log_params(reasoning: str, deploy_hash: str | None) -> str:
 
 
 class ChainExecutor:
-    """Ejecuta decisiones del agente on-chain vía el contrato YieldVault (TransactionV1)."""
+    """Ejecuta decisiones del agente on-chain vía el contrato YieldVault (pycspr legacy Deploy)."""
 
     async def execute_swap(self, decision: Decision) -> str:
         """
         Llama a execute_swap(token_in, token_out, amount_in, amount_out).
-        Devuelve el tx hash.
+        Devuelve el deploy hash.
         """
         amount_in_motes = int(decision.amount * 1_000_000_000)
         amount_out_motes = int((decision.amount_out or 0.0) * 1_000_000_000)
@@ -64,16 +65,19 @@ class ChainExecutor:
             token_out=decision.token_out,
         )
 
-        tx_hash = await submit_contract_call(
+        private_key = load_owner_private_key()
+        deploy = build_contract_call_deploy(
+            private_key=private_key,
             contract_package_hash=settings.vault_package_hash,
             entry_point="execute_swap",
-            args=[
-                ("token_in",  "CLString",  decision.token_in),
-                ("token_out", "CLString",  decision.token_out),
-                ("amount_in",  "CLUInt512", str(amount_in_motes)),
-                ("amount_out", "CLUInt512", str(amount_out_motes)),
-            ],
+            args={
+                "token_in":   CLV_String(decision.token_in),
+                "token_out":  CLV_String(decision.token_out),
+                "amount_in":  CLV_U512(amount_in_motes),
+                "amount_out": CLV_U512(amount_out_motes),
+            },
         )
+        tx_hash = await submit_deploy(deploy)
         log.info("chain.swap_submitted", tx_hash=tx_hash)
         return tx_hash
 
@@ -85,14 +89,17 @@ class ChainExecutor:
         params = _build_log_params(decision.reasoning, deploy_hash)
         log.info("chain.log_action", action=decision.action, deploy_hash=deploy_hash)
 
-        await submit_contract_call(
+        private_key = load_owner_private_key()
+        deploy = build_contract_call_deploy(
+            private_key=private_key,
             contract_package_hash=settings.vault_package_hash,
             entry_point="log_action",
-            args=[
-                ("action_type", "CLString", decision.action.value),
-                ("params",      "CLString", params),
-            ],
+            args={
+                "action_type": CLV_String(decision.action.value),
+                "params":      CLV_String(params),
+            },
         )
+        await submit_deploy(deploy)
 
     async def deposit(self, amount_cspr: float) -> str:
         """
