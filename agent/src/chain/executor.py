@@ -106,6 +106,7 @@ class ChainExecutor:
                 "CSPR_CLOUD_AUTH_TOKEN": settings.cspr_cloud_api_key,
                 "ODRA_CASPER_LIVENET_SECRET_KEY_PATH": pem_path,
                 "ODRA_CASPER_LIVENET_CHAIN_NAME": "casper-test",
+                "VAULT_PACKAGE_HASH": settings.vault_package_hash,
             }
             log.info("chain.deposit", amount_cspr=amount_cspr, script=str(_DEPOSIT_SCRIPT))
             proc = await asyncio.create_subprocess_exec(

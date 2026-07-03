@@ -37,7 +37,9 @@ PROXY_WASM  = (
 )
 
 # ── Contrato ───────────────────────────────────────────────────────────────────
-CONTRACT_PACKAGE_HASH = "a44b0f0f83462cdc10172a0576ec760363fc1f25ca6dd92da9df1e2200a78c88"
+# Puede sobreescribirse con la var de entorno VAULT_PACKAGE_HASH
+_DEFAULT_PACKAGE_HASH = "a44b0f0f83462cdc10172a0576ec760363fc1f25ca6dd92da9df1e2200a78c88"
+CONTRACT_PACKAGE_HASH: str  # se asigna en main() tras cargar el env
 
 # ── Defaults ───────────────────────────────────────────────────────────────────
 CHAIN_NAME_DEFAULT = "casper-test"
@@ -61,6 +63,7 @@ def _load_env() -> dict:
         "CSPR_CLOUD_AUTH_TOKEN",
         "ODRA_CASPER_LIVENET_SECRET_KEY_PATH",
         "ODRA_CASPER_LIVENET_CHAIN_NAME",
+        "VAULT_PACKAGE_HASH",
     ):
         if key in os.environ:
             env[key] = os.environ[key]
@@ -112,10 +115,13 @@ def _load_private_key(key_path: Path, pycspr):
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 async def main():
+    global CONTRACT_PACKAGE_HASH
     cspr_amount  = int(sys.argv[1]) if len(sys.argv) > 1 else 200
     amount_motes = cspr_amount * 1_000_000_000
 
     env = _load_env()
+
+    CONTRACT_PACKAGE_HASH = env.get("VAULT_PACKAGE_HASH", _DEFAULT_PACKAGE_HASH)
 
     token = env.get("CSPR_CLOUD_AUTH_TOKEN", "").strip()
     if not token:
