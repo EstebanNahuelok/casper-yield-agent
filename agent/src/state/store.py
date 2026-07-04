@@ -37,6 +37,8 @@ class StateStore:
                 self._state.actions_taken += 1
                 if decision.amount_out:
                     self._state.scspr_balance_cspr += decision.amount_out
+                if decision.amount:
+                    self._state.balance_cspr = max(0.0, self._state.balance_cspr - decision.amount)
 
             entry = DecisionHistoryEntry(
                 timestamp=datetime.now(timezone.utc),
