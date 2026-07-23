@@ -155,9 +155,9 @@ impl YieldVault {
         });
     }
 
-    /// Executes a swap via the configured SimplePool AMM.
-    /// If pool_address is set, sends CSPR from the vault purse to the pool and receives
-    /// sCSPR back (x*y=k with 0.3% fee). Updates total_locked and scspr_balance.
+    /// Executes a CSPR <-> sCSPR swap via the configured SimplePool AMM.
+    /// Dispatches on token_in: "CSPR" runs the forward swap (vault sends CSPR, receives sCSPR);
+    /// "sCSPR" runs the reverse swap (vault burns sCSPR balance, pool returns CSPR).
     /// If pool_address is not set, records the swap as an audit log only (no fund movement).
     pub fn execute_swap(
         &mut self,
@@ -192,33 +192,61 @@ impl YieldVault {
 
         // If pool is configured, execute a real on-chain swap.
         let actual_amount_out = if let Some(pool_addr) = self.pool_address.get() {
-            // Build cross-contract call to pool.swap_cspr_for_scspr with CSPR attached.
-            let mut args = odra::casper_types::RuntimeArgs::new();
-            args.insert("min_amount_out", U512::zero()).unwrap_or_revert(self);
-            args.insert("recipient", self.env().self_address()).unwrap_or_revert(self);
+            if token_in == "CSPR" {
+                // Forward swap: attach CSPR to the cross-contract call.
+                let mut args = odra::casper_types::RuntimeArgs::new();
+                args.insert("min_amount_out", U512::zero()).unwrap_or_revert(self);
+                args.insert("recipient", self.env().self_address()).unwrap_or_revert(self);
 
-            let call_def = CallDef::new("swap_cspr_for_scspr", true, args)
-                .with_amount(amount_in);
+                let call_def = CallDef::new("swap_cspr_for_scspr", true, args)
+                    .with_amount(amount_in);
 
-            let returned: U512 = self.env().call_contract(pool_addr, call_def);
+                let returned: U512 = self.env().call_contract(pool_addr, call_def);
 
-            // Update CSPR accounting: vault purse lost amount_in (transferred to pool).
-            let new_total = self
-                .total_locked
-                .get_or_default()
-                .checked_sub(amount_in)
-                .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
-            self.total_locked.set(new_total);
+                let new_total = self
+                    .total_locked
+                    .get_or_default()
+                    .checked_sub(amount_in)
+                    .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
+                self.total_locked.set(new_total);
 
-            // Track sCSPR received from pool.
-            let new_scspr = self
-                .scspr_balance
-                .get_or_default()
-                .checked_add(returned)
-                .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
-            self.scspr_balance.set(new_scspr);
+                let new_scspr = self
+                    .scspr_balance
+                    .get_or_default()
+                    .checked_add(returned)
+                    .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
+                self.scspr_balance.set(new_scspr);
 
-            returned
+                returned
+            } else {
+                // Reverse swap: sCSPR -> CSPR.
+                let scspr_bal = self.scspr_balance.get_or_default();
+                if amount_in > scspr_bal {
+                    self.revert(VaultError::InsufficientBalance);
+                }
+
+                let mut args = odra::casper_types::RuntimeArgs::new();
+                args.insert("amount_in", amount_in).unwrap_or_revert(self);
+                args.insert("min_amount_out", U512::zero()).unwrap_or_revert(self);
+                args.insert("recipient", self.env().self_address()).unwrap_or_revert(self);
+
+                let call_def = CallDef::new("swap_scspr_for_cspr", true, args);
+                let cspr_returned: U512 = self.env().call_contract(pool_addr, call_def);
+
+                let new_scspr = scspr_bal
+                    .checked_sub(amount_in)
+                    .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
+                self.scspr_balance.set(new_scspr);
+
+                let new_total = self
+                    .total_locked
+                    .get_or_default()
+                    .checked_add(cspr_returned)
+                    .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
+                self.total_locked.set(new_total);
+
+                cspr_returned
+            }
         } else {
             // No pool configured: audit-log only, no fund movement.
             amount_out

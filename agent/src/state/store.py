@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 
-from .models import AgentState, AgentVote, Decision, DecisionHistoryEntry, MarketData, SwarmResult
+from .models import Action, AgentState, AgentVote, Decision, DecisionHistoryEntry, MarketData, SwarmResult
 
 
 class StateStore:
@@ -35,10 +35,16 @@ class StateStore:
             if tx_hash:
                 self._state.last_tx_hash = tx_hash
                 self._state.actions_taken += 1
-                if decision.amount_out:
-                    self._state.scspr_balance_cspr += decision.amount_out
-                if decision.amount:
-                    self._state.balance_cspr = max(0.0, self._state.balance_cspr - decision.amount)
+                if decision.action == Action.SWAP:
+                    # CSPR -> sCSPR: CSPR leaves, sCSPR arrives
+                    if decision.amount:
+                        self._state.balance_cspr = max(0.0, self._state.balance_cspr - decision.amount)
+                    if decision.amount_out:
+                        self._state.scspr_balance_cspr += decision.amount_out
+                elif decision.action == Action.SWAP_BACK:
+                    # sCSPR -> CSPR: sCSPR leaves (CSPR arrives next RPC read)
+                    if decision.amount:
+                        self._state.scspr_balance_cspr = max(0.0, self._state.scspr_balance_cspr - decision.amount)
 
             entry = DecisionHistoryEntry(
                 timestamp=datetime.now(timezone.utc),
@@ -52,7 +58,7 @@ class StateStore:
             self._state.decision_history = self._state.decision_history[-10:]
 
             if swarm_votes is not None:
-                tally: dict[str, int] = {"SWAP": 0, "HOLD": 0}
+                tally: dict[str, int] = {"SWAP": 0, "SWAP_BACK": 0, "HOLD": 0}
                 for v in swarm_votes:
                     tally[v.action.value] = tally.get(v.action.value, 0) + 1
                 self._state.last_swarm_result = SwarmResult(

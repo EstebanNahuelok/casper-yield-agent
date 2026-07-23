@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 class Action(str, Enum):
     SWAP = "SWAP"
+    SWAP_BACK = "SWAP_BACK"
     HOLD = "HOLD"
 
 

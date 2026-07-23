@@ -9,7 +9,7 @@ from .config import settings
 from .llm.swarm import SwarmDecisionEngine
 from .mcp_clients.casper_client import CasperMCPClient, MCPConnectionError
 from .mcp_clients.trade_client import CSPRTradeRestClient, TradeClientError
-from .state.models import Action, MarketData
+from .state.models import Action, Decision, MarketData
 from .state.store import state_store
 
 log = structlog.get_logger()
@@ -128,12 +128,30 @@ async def _run_cycle(
         quote = await trade.get_quote(decision.amount)
         decision.amount_out = quote.get("amount_out", 0.0)
 
+    # 2c. Si el enjambre vota HOLD pero hay sCSPR en el vault, exit position (SWAP_BACK)
+    if decision.action == Action.HOLD:
+        current_state = await state_store.get()
+        scspr_held = current_state.scspr_balance_cspr
+        if scspr_held > 0:
+            decision = Decision(
+                action=Action.SWAP_BACK,
+                reasoning=(
+                    f"Exiting sCSPR position ({scspr_held:.4f} sCSPR held): swarm voted HOLD "
+                    f"indicating unfavorable conditions to maintain position. "
+                    f"Original reasoning: {decision.reasoning}"
+                ),
+                amount=scspr_held,
+                token_in="sCSPR",
+                token_out="CSPR",
+            )
+            log.info("agent.swap_back_triggered", scspr_held=scspr_held)
+
     # 3. Ejecutar si corresponde
     deploy_hash: str | None = None
-    if decision.action == Action.SWAP:
+    if decision.action in (Action.SWAP, Action.SWAP_BACK):
         await state_store.update_status("executing")
         deploy_hash = await executor.execute_swap(decision)
-        log.info("agent.swap_done", deploy_hash=deploy_hash)
+        log.info("agent.swap_done", action=decision.action, deploy_hash=deploy_hash)
 
     # 4. Loguear on-chain siempre (auditable por el jurado)
     try:

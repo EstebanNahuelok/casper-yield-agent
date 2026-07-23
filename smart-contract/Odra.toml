@@ -1,2 +1,5 @@
 [[contracts]]
 fqn = "yield_vault::vault::YieldVault"
+
+[[contracts]]
+fqn = "yield_vault::pool::SimplePool"

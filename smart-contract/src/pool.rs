@@ -14,6 +14,16 @@ pub struct PoolSwap {
 }
 
 #[odra::event]
+pub struct PoolSwapReverse {
+    pub scspr_in: U512,
+    pub cspr_out: U512,
+    pub recipient: Address,
+    pub new_cspr_reserve: U512,
+    pub new_scspr_reserve: U512,
+    pub timestamp: u64,
+}
+
+#[odra::event]
 pub struct PoolSeeded {
     pub cspr_added: U512,
     pub total_cspr_reserve: U512,
@@ -121,6 +131,79 @@ impl SimplePool {
         self.env().emit_event(PoolSwap {
             cspr_in: amount_in,
             scspr_out: amount_out,
+            recipient,
+            new_cspr_reserve,
+            new_scspr_reserve,
+            timestamp: self.env().get_block_time(),
+        });
+
+        amount_out
+    }
+
+    /// Swaps sCSPR (virtual reserve) for real CSPR using x*y=k formula with 0.3% fee.
+    /// Transfers CSPR from the pool purse to `recipient`.
+    ///
+    /// `amount_in`: sCSPR units to swap in.
+    /// `min_amount_out`: minimum CSPR expected (pass 0 to disable slippage guard).
+    pub fn swap_scspr_for_cspr(
+        &mut self,
+        amount_in: U512,
+        min_amount_out: U512,
+        recipient: Address,
+    ) -> U512 {
+        if amount_in.is_zero() {
+            self.revert(VaultError::InvalidAmount);
+        }
+
+        let cspr_reserve = self.cspr_reserve.get_or_default();
+        let scspr_reserve = self.scspr_reserve.get_or_default();
+
+        if cspr_reserve.is_zero() || scspr_reserve.is_zero() {
+            self.revert(VaultError::InsufficientLiquidity);
+        }
+
+        // x*y=k with 0.3% fee applied to the sCSPR input
+        let amount_in_with_fee = amount_in
+            .checked_mul(U512::from(997u64))
+            .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow)
+            .checked_div(U512::from(1000u64))
+            .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
+
+        let numerator = cspr_reserve
+            .checked_mul(amount_in_with_fee)
+            .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
+
+        let denominator = scspr_reserve
+            .checked_add(amount_in_with_fee)
+            .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
+
+        let amount_out = numerator
+            .checked_div(denominator)
+            .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
+
+        if amount_out < min_amount_out {
+            self.revert(VaultError::SlippageExceeded);
+        }
+
+        if amount_out > cspr_reserve {
+            self.revert(VaultError::InsufficientLiquidity);
+        }
+
+        let new_cspr_reserve = cspr_reserve
+            .checked_sub(amount_out)
+            .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
+        let new_scspr_reserve = scspr_reserve
+            .checked_add(amount_in)
+            .unwrap_or_revert_with(self, VaultError::ArithmeticOverflow);
+
+        self.cspr_reserve.set(new_cspr_reserve);
+        self.scspr_reserve.set(new_scspr_reserve);
+
+        self.env().transfer_tokens(&recipient, &amount_out);
+
+        self.env().emit_event(PoolSwapReverse {
+            scspr_in: amount_in,
+            cspr_out: amount_out,
             recipient,
             new_cspr_reserve,
             new_scspr_reserve,
