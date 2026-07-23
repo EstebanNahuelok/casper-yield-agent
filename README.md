@@ -9,7 +9,7 @@ An AI-powered system that observes on-chain market conditions, decides whether t
 | Resource | URL |
 |----------|-----|
 | Frontend (Vercel) | https://casper-yield-agent.vercel.app |
-| Contract on Testnet | https://testnet.cspr.live/contract/6c5fe09ddc4ca76adfa2790bf7a58767eba32020a50e606a14a8ef803a89a06a |
+| Contract on Testnet | https://testnet.cspr.live/contract/0bcc5c99c90390e2f8c2259f097a860e93f14edd7c24047451986d44b99d3011 |
 | Deploy transaction | https://testnet.cspr.live/deploy/87d049e49874173ce5ee3eb6e7333baeebd6e3be938e65aa6cae82bb7ba31ecb |
 
 ---
@@ -73,8 +73,8 @@ An AI-powered system that observes on-chain market conditions, decides whether t
 
 | Key | Value |
 |-----|-------|
-| Contract Hash | `hash-6c5fe09ddc4ca76adfa2790bf7a58767eba32020a50e606a14a8ef803a89a06a` |
-| Contract Package Hash | `hash-a44b0f0f83462cdc10172a0576ec760363fc1f25ca6dd92da9df1e2200a78c88` |
+| Contract Hash | `hash-0bcc5c99c90390e2f8c2259f097a860e93f14edd7c24047451986d44b99d3011` |
+| Contract Package Hash | `hash-d21679ac36362ccd8e3504d6a18c1386d5e1455ca7f948ee843be182ee8d2e38` |
 | Owner Wallet | `01c3acc1af3faa221073e5928bf74d58ad9ad9e58be2bdc39218a25e5ddff72309` |
 | Deploy Hash | `87d049e49874173ce5ee3eb6e7333baeebd6e3be938e65aa6cae82bb7ba31ecb` |
 
