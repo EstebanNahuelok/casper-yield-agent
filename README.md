@@ -178,7 +178,7 @@ Entry points:
 |----------|--------|-------------|
 | `deposit()` | Anyone | Payable — deposits CSPR into the vault |
 | `withdraw(amount)` | Depositor | Withdraws caller's own CSPR |
-| `execute_swap(...)` | Agent only | Executes CSPR → sCSPR swap (audit log if no pool set) |
+| `execute_swap(...)` | Agent only | Executes real CSPR → sCSPR swap via SimplePool AMM (cross-contract call) |
 | `log_action(action_type, params)` | Agent only | Records every decision on-chain with full LLM reasoning |
 
 ---
@@ -220,7 +220,7 @@ All three call Groq `llama-3.3-70b-versatile` concurrently. The majority vote (�
 - [x] Deposit via agent API (payable entry point via pycspr + proxy WASM)
 
 ### Q3 2026
-- [ ] SimplePool AMM integration — live CSPR/sCSPR swaps with real fund movement
+- [x] SimplePool AMM integration — live CSPR/sCSPR swaps with real fund movement (deployed on testnet, `set_pool` configured)
 - [ ] Mainnet deployment after security audit
 - [ ] x402 protocol integration for trustless agent payments
 - [ ] Multi-strategy support (staking, LP positions, lending)
